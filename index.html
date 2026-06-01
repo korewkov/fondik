@@ -95,7 +95,17 @@
                 <span id="fundCount"></span>
               </div>
               <div class="section-actions">
-                <button class="ghost-btn compact danger" id="resetMonthBtn" type="button">Сбросить месяц</button>
+                <div class="confirm-wrap" id="resetConfirmWrap">
+                  <button class="ghost-btn compact danger" id="resetMonthBtn" type="button" aria-expanded="false">Сбросить месяц</button>
+                  <div class="inline-confirm is-hidden" id="resetConfirm" role="status">
+                    <strong>Сбросить месяц?</strong>
+                    <span>Фонды и общие балансы сохранятся.</span>
+                    <div class="inline-confirm-actions">
+                      <button class="ghost-btn compact" id="cancelResetBtn" type="button">Отмена</button>
+                      <button class="primary-btn compact danger-fill" id="confirmResetBtn" type="button">Да, сбросить</button>
+                    </div>
+                  </div>
+                </div>
                 <button class="primary-btn compact" id="addFundBtn" type="button">Новый фонд</button>
               </div>
             </div>
@@ -159,6 +169,9 @@
         <label>Цель
           <input id="fundTarget" type="number" min="0" step="0.01" required>
         </label>
+        <label>Цель на месяц
+          <input id="fundMonthTarget" type="number" min="0" step="0.01" required>
+        </label>
         <label>Процент
           <input id="fundPercent" type="number" min="0" max="100" step="0.1" required>
         </label>
@@ -175,6 +188,10 @@
         <button class="primary-btn" id="saveFundBtn" value="default" type="submit">Сохранить</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog class="fund-modal" id="fundDetailModal">
+    <article class="modal-card fund-detail" id="fundDetailContent"></article>
   </dialog>
 
   <div class="toast" id="toast"></div>

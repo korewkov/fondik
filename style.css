@@ -280,8 +280,63 @@ input[type="file"] {
 }
 
 .section-actions {
+  position: relative;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.confirm-wrap {
+  position: relative;
+}
+
+.inline-confirm {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(310px, calc(100vw - 36px));
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow);
+  animation: pop 160ms ease both;
+}
+
+.inline-confirm::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: 28px;
+  width: 14px;
+  height: 14px;
+  border-top: 2px solid var(--line);
+  border-left: 2px solid var(--line);
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.inline-confirm strong,
+.inline-confirm span {
+  display: block;
+}
+
+.inline-confirm strong {
+  margin-bottom: 4px;
+  font-size: 16px;
+}
+
+.inline-confirm span {
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.inline-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .user-panel {
@@ -407,6 +462,17 @@ h2 {
   }
 }
 
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .income-panel {
   position: relative;
   display: grid;
@@ -462,7 +528,7 @@ h2 {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(138px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -505,13 +571,19 @@ h2 {
   position: relative;
   overflow: hidden;
   padding: 14px;
+  cursor: pointer;
   transition: transform 170ms ease, box-shadow 170ms ease;
 }
 
 .fund-card:hover,
+.fund-card:focus-visible,
 .history-item:hover {
   transform: translateY(-2px);
   box-shadow: 9px 9px 0 rgba(24, 50, 79, 0.14);
+}
+
+.fund-card:focus-visible {
+  outline: 3px solid var(--sky);
 }
 
 .fund-card::before {
@@ -726,6 +798,70 @@ h2 {
   padding: 20px;
 }
 
+.fund-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.compact-detail-grid {
+  margin-top: 14px;
+}
+
+.detail-box {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: var(--paper-soft);
+}
+
+.detail-box span,
+.detail-row span,
+.detail-description {
+  color: var(--muted);
+}
+
+.detail-box span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-box strong {
+  display: block;
+  color: var(--blue-dark);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.detail-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 800;
+}
+
+.detail-description {
+  margin: 16px 0 12px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -836,7 +972,8 @@ h2 {
 
   .stats-grid,
   .fund-money,
-  .form-grid {
+  .form-grid,
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 

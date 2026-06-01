@@ -15,6 +15,7 @@ const defaultFunds = [
     color: "#52d6ff",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 15000,
     target: 300000,
     percent: 5,
     priority: 1,
@@ -27,6 +28,7 @@ const defaultFunds = [
     color: "#ffd166",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 12000,
     target: 120000,
     percent: 18,
     priority: 2,
@@ -39,6 +41,7 @@ const defaultFunds = [
     color: "#ff8177",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 6000,
     target: 80000,
     percent: 6,
     priority: 3,
@@ -51,6 +54,7 @@ const defaultFunds = [
     color: "#ff6b6b",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 15000,
     target: 100000,
     percent: 24,
     priority: 4,
@@ -63,6 +67,7 @@ const defaultFunds = [
     color: "#a78bfa",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 8000,
     target: 40000,
     percent: 5,
     priority: 5,
@@ -75,6 +80,7 @@ const defaultFunds = [
     color: "#37d399",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 10000,
     target: 150000,
     percent: 15,
     priority: 6,
@@ -87,6 +93,7 @@ const defaultFunds = [
     color: "#4cc9f0",
     balance: 12000,
     monthBalance: 0,
+    monthTarget: 5000,
     target: 35000,
     percent: 5,
     priority: 7,
@@ -99,6 +106,7 @@ const defaultFunds = [
     color: "#f59e0b",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 7000,
     target: 250000,
     percent: 4,
     priority: 8,
@@ -111,6 +119,7 @@ const defaultFunds = [
     color: "#2dd4bf",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 10000,
     target: 180000,
     percent: 10,
     priority: 9,
@@ -123,6 +132,7 @@ const defaultFunds = [
     color: "#f472b6",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 5000,
     target: 30000,
     percent: 5,
     priority: 10,
@@ -135,6 +145,7 @@ const defaultFunds = [
     color: "#84cc16",
     balance: 0,
     monthBalance: 0,
+    monthTarget: 2000,
     target: 8000,
     percent: 3,
     priority: 11,
@@ -193,12 +204,19 @@ const els = {
   fundColor: document.querySelector("#fundColor"),
   fundBalance: document.querySelector("#fundBalance"),
   fundTarget: document.querySelector("#fundTarget"),
+  fundMonthTarget: document.querySelector("#fundMonthTarget"),
   fundPercent: document.querySelector("#fundPercent"),
   fundPriority: document.querySelector("#fundPriority"),
   fundDescription: document.querySelector("#fundDescription"),
   historyList: document.querySelector("#historyList"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
   resetMonthBtn: document.querySelector("#resetMonthBtn"),
+  resetConfirmWrap: document.querySelector("#resetConfirmWrap"),
+  resetConfirm: document.querySelector("#resetConfirm"),
+  cancelResetBtn: document.querySelector("#cancelResetBtn"),
+  confirmResetBtn: document.querySelector("#confirmResetBtn"),
+  fundDetailModal: document.querySelector("#fundDetailModal"),
+  fundDetailContent: document.querySelector("#fundDetailContent"),
   toast: document.querySelector("#toast")
 };
 
@@ -265,11 +283,22 @@ function normalizeFund(fund) {
     color: fund.color || "#52d6ff",
     balance: Number(fund.balance) || 0,
     monthBalance: Number(fund.monthBalance) || 0,
+    monthTarget: Number(fund.monthTarget) || suggestMonthTarget(fund),
     target: Number(fund.target) || 0,
     percent: Number(fund.percent) || 0,
     priority: Number(fund.priority) || 1,
     description: fund.description || ""
   };
+}
+
+function suggestMonthTarget(fund) {
+  const target = Number(fund?.target) || 0;
+  const percent = Number(fund?.percent) || 0;
+  if (target > 0) {
+    return Math.max(1000, roundMoney(target * 0.08));
+  }
+
+  return Math.max(1000, roundMoney(percent * 1000));
 }
 
 function saveState() {
@@ -283,10 +312,8 @@ function saveState() {
       await persistState(state);
       isStorageReady = true;
       storageStatus = "Данные сохранены в Supabase.";
-      renderSettings();
     } catch (error) {
       storageStatus = `Не удалось сохранить в Supabase: ${error.message}`;
-      renderSettings();
       showToast(storageStatus);
     }
   }, 250);
@@ -461,8 +488,19 @@ function progressOf(fund) {
   return Math.min(100, Math.round((fund.balance / fund.target) * 100));
 }
 
+function monthProgressOf(fund) {
+  if (!fund.monthTarget) {
+    return 0;
+  }
+  return Math.min(100, Math.round(((fund.monthBalance || 0) / fund.monthTarget) * 100));
+}
+
 function remainingOf(fund) {
   return Math.max(0, fund.target - fund.balance);
+}
+
+function monthRemainingOf(fund) {
+  return Math.max(0, (fund.monthTarget || 0) - (fund.monthBalance || 0));
 }
 
 function forecastFor(fund) {
@@ -518,21 +556,21 @@ function renderAuthState() {
 
 function renderStats() {
   const capital = state.funds.reduce((sum, fund) => sum + fund.balance, 0);
-  const debt = state.funds
-    .filter((fund) => /кредит|долг/i.test(fund.name))
-    .reduce((sum, fund) => sum + remainingOf(fund), 0);
-  const goals = state.funds
-    .filter((fund) => !/кредит|долг/i.test(fund.name))
-    .reduce((sum, fund) => sum + fund.balance, 0);
-  const business = state.funds.find((fund) => /бизнес/i.test(fund.name))?.balance || 0;
-  const reserve = state.funds.find((fund) => /резерв/i.test(fund.name))?.balance || 0;
+  const monthTotal = state.funds.reduce((sum, fund) => sum + (fund.monthBalance || 0), 0);
+  const monthTarget = state.funds.reduce((sum, fund) => sum + (fund.monthTarget || 0), 0);
+  const monthLeft = Math.max(0, monthTarget - monthTotal);
+  const business = state.funds.find((fund) => /бизнес/i.test(fund.name))?.monthBalance || 0;
+  const reserve = state.funds.find((fund) => /резерв/i.test(fund.name))?.monthBalance || 0;
+  const monthProgress = monthTarget ? `${Math.min(100, Math.round(monthTotal / monthTarget * 100))}%` : "0%";
 
   const stats = [
     ["Общий капитал", money(capital), "#37d399"],
-    ["Общий долг", money(debt), "#ff6b6b"],
-    ["Накоплено на цели", money(goals), "#52d6ff"],
-    ["Фонд бизнеса", money(business), "#ffd166"],
-    ["Резерв", money(reserve), "#2dd4bf"]
+    ["За месяц", money(monthTotal), "#4cc9f0"],
+    ["Цель месяца", money(monthTarget), "#52d6ff"],
+    ["Осталось в месяце", money(monthLeft), "#ff6b6b"],
+    ["Прогресс месяца", monthProgress, "#37d399"],
+    ["Бизнес за месяц", money(business), "#ffd166"],
+    ["Резерв за месяц", money(reserve), "#2dd4bf"]
   ];
 
   els.statsGrid.innerHTML = stats.map(([label, value, color]) => `
@@ -547,14 +585,14 @@ function renderFunds() {
   const funds = sortedFunds();
   els.fundCount.textContent = `${funds.length} фондов`;
   els.fundGrid.innerHTML = funds.map((fund) => {
-    const progress = progressOf(fund);
+    const progress = monthProgressOf(fund);
     return `
-      <article class="fund-card" style="--fund-color: ${fund.color}">
+      <article class="fund-card" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
         <div class="fund-head">
           <div class="fund-icon">${escapeHtml(fund.icon)}</div>
           <div class="fund-title">
             <h3>${escapeHtml(fund.name)}</h3>
-            <div class="fund-meta">${fund.percent}% дохода · приоритет ${fund.priority}</div>
+            <div class="fund-meta">${fund.percent}% дохода · месяц</div>
           </div>
           <div class="fund-actions">
             <button class="icon-btn" type="button" data-edit="${fund.id}" aria-label="Редактировать ${escapeHtml(fund.name)}">✎</button>
@@ -563,23 +601,24 @@ function renderFunds() {
         </div>
         <div class="fund-money">
           <div>
-            <span>Накоплено</span>
-            <strong>${money(fund.balance)}</strong>
+            <span>За месяц</span>
+            <strong>${money(fund.monthBalance || 0)}</strong>
           </div>
           <div>
-            <span>Цель</span>
-            <strong>${money(fund.target)}</strong>
+            <span>Цель месяца</span>
+            <strong>${money(fund.monthTarget || 0)}</strong>
           </div>
         </div>
         <div class="progress-track">
           <span class="progress-fill" style="--progress: ${progress}%"></span>
         </div>
         <div class="fund-footer">
-          <span>${progress}% цели</span>
-          <span>Осталось ${money(remainingOf(fund))}</span>
+          <span>${progress}% месяца</span>
+          <span>Осталось ${money(monthRemainingOf(fund))}</span>
         </div>
         <div class="fund-footer">
-          <span>${forecastFor(fund)}</span>
+          <span>${fund.percent}% от доходов</span>
+          <span>Приоритет ${fund.priority}</span>
         </div>
       </article>
     `;
@@ -691,6 +730,7 @@ function openFundModal(fund) {
   els.fundColor.value = fund?.color || "#52d6ff";
   els.fundBalance.value = fund?.balance ?? 0;
   els.fundTarget.value = fund?.target ?? 0;
+  els.fundMonthTarget.value = fund?.monthTarget ?? suggestMonthTarget(fund);
   els.fundPercent.value = fund?.percent ?? 0;
   els.fundPriority.value = fund?.priority ?? state.funds.length + 1;
   els.fundDescription.value = fund?.description || "";
@@ -709,6 +749,7 @@ function saveFundFromForm() {
     color: els.fundColor.value,
     balance: roundMoney(els.fundBalance.value),
     monthBalance: state.funds.find((fund) => fund.id === els.fundId.value)?.monthBalance || 0,
+    monthTarget: roundMoney(els.fundMonthTarget.value),
     target: roundMoney(els.fundTarget.value),
     percent: roundMoney(els.fundPercent.value),
     priority: Number(els.fundPriority.value) || 1,
@@ -754,16 +795,88 @@ function deleteFund(id) {
   render();
 }
 
+function openFundDetails(fund) {
+  if (!fund) {
+    return;
+  }
+
+  const totalProgress = progressOf(fund);
+  const monthProgress = monthProgressOf(fund);
+  els.fundDetailContent.innerHTML = `
+    <div class="modal-head">
+      <div class="fund-detail-title">
+        <div class="fund-icon" style="--fund-color: ${fund.color}">${escapeHtml(fund.icon)}</div>
+        <div>
+          <p class="eyebrow">Общая информация</p>
+          <h2>${escapeHtml(fund.name)}</h2>
+        </div>
+      </div>
+      <button class="icon-btn" type="button" data-close-detail aria-label="Закрыть">×</button>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-box">
+        <span>Общий баланс</span>
+        <strong>${money(fund.balance)}</strong>
+      </div>
+      <div class="detail-box">
+        <span>Общая цель</span>
+        <strong>${money(fund.target)}</strong>
+      </div>
+      <div class="detail-box">
+        <span>Осталось всего</span>
+        <strong>${money(remainingOf(fund))}</strong>
+      </div>
+      <div class="detail-box">
+        <span>Прогресс цели</span>
+        <strong>${totalProgress}%</strong>
+      </div>
+    </div>
+
+    <div class="detail-progress">
+      <div class="detail-row">
+        <span>Общая цель</span>
+        <strong>${totalProgress}%</strong>
+      </div>
+      <div class="progress-track">
+        <span class="progress-fill" style="--progress: ${totalProgress}%; --fund-color: ${fund.color}"></span>
+      </div>
+    </div>
+
+    <div class="detail-grid compact-detail-grid">
+      <div class="detail-box">
+        <span>За месяц</span>
+        <strong>${money(fund.monthBalance || 0)}</strong>
+      </div>
+      <div class="detail-box">
+        <span>Цель месяца</span>
+        <strong>${money(fund.monthTarget || 0)}</strong>
+      </div>
+      <div class="detail-box">
+        <span>Осталось в месяце</span>
+        <strong>${money(monthRemainingOf(fund))}</strong>
+      </div>
+      <div class="detail-box">
+        <span>Месячный прогресс</span>
+        <strong>${monthProgress}%</strong>
+      </div>
+    </div>
+
+    <p class="detail-description">${escapeHtml(fund.description || "Без описания")}</p>
+    <div class="detail-row">
+      <span>${forecastFor(fund)}</span>
+      <span>${fund.percent}% дохода · приоритет ${fund.priority}</span>
+    </div>
+  `;
+  els.fundDetailModal.showModal();
+}
+
 function resetMonth() {
   if (!canChangeData()) {
     return;
   }
 
-  const confirmed = confirm("Сбросить месячные накопления? Фонды и общие балансы сохранятся.");
-  if (!confirmed) {
-    return;
-  }
-
+  closeResetConfirm();
   state.funds = state.funds.map((fund) => ({ ...fund, monthBalance: 0 }));
   state.history.push({
     id: createId(),
@@ -774,6 +887,20 @@ function resetMonth() {
   });
   showToast("Месяц сброшен.");
   render();
+}
+
+function openResetConfirm() {
+  if (!canChangeData()) {
+    return;
+  }
+
+  els.resetConfirm.classList.remove("is-hidden");
+  els.resetMonthBtn.setAttribute("aria-expanded", "true");
+}
+
+function closeResetConfirm() {
+  els.resetConfirm.classList.add("is-hidden");
+  els.resetMonthBtn.setAttribute("aria-expanded", "false");
 }
 
 function switchScreen(screen) {
@@ -897,16 +1024,55 @@ els.incomeForm.addEventListener("submit", (event) => {
 
 els.addFundBtn.addEventListener("click", () => openFundModal());
 
+els.resetMonthBtn.addEventListener("click", openResetConfirm);
+
+els.cancelResetBtn.addEventListener("click", closeResetConfirm);
+
+els.confirmResetBtn.addEventListener("click", resetMonth);
+
+document.addEventListener("click", (event) => {
+  if (!els.resetConfirm.classList.contains("is-hidden") && !els.resetConfirmWrap.contains(event.target)) {
+    closeResetConfirm();
+  }
+});
+
 els.fundGrid.addEventListener("click", (event) => {
   const editId = event.target.closest("[data-edit]")?.dataset.edit;
   const deleteId = event.target.closest("[data-delete]")?.dataset.delete;
+  const cardId = event.target.closest("[data-fund-card]")?.dataset.fundCard;
 
   if (editId) {
     openFundModal(state.funds.find((fund) => fund.id === editId));
+    return;
   }
 
   if (deleteId) {
     deleteFund(deleteId);
+    return;
+  }
+
+  if (cardId) {
+    openFundDetails(state.funds.find((fund) => fund.id === cardId));
+  }
+});
+
+els.fundGrid.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+
+  const cardId = event.target.closest("[data-fund-card]")?.dataset.fundCard;
+  if (!cardId || event.target.closest("button")) {
+    return;
+  }
+
+  event.preventDefault();
+  openFundDetails(state.funds.find((fund) => fund.id === cardId));
+});
+
+els.fundDetailModal.addEventListener("click", (event) => {
+  if (event.target === els.fundDetailModal || event.target.closest("[data-close-detail]")) {
+    els.fundDetailModal.close();
   }
 });
 
@@ -930,8 +1096,6 @@ els.clearHistoryBtn.addEventListener("click", () => {
     render();
   }
 });
-
-els.resetMonthBtn.addEventListener("click", resetMonth);
 
 async function initApp() {
   isBooted = true;
