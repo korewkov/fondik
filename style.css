@@ -72,6 +72,58 @@ input[type="file"] {
   display: none;
 }
 
+.is-hidden {
+  display: none !important;
+}
+
+.auth-screen {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(520px, 100%);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 10px 10px 0 rgba(24, 50, 79, 0.14);
+  padding: 28px;
+}
+
+.auth-brand {
+  margin-bottom: 24px;
+}
+
+.auth-card h1 {
+  margin-bottom: 14px;
+}
+
+.auth-copy {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.auth-message {
+  min-height: 22px;
+  margin: 14px 0 0;
+  color: #9a6400;
+  font-weight: 800;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 236px minmax(0, 1fr);
@@ -197,6 +249,21 @@ input[type="file"] {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+}
+
+.user-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-panel span {
+  max-width: 280px;
+  overflow: hidden;
+  color: var(--muted);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar {
@@ -730,12 +797,17 @@ h2 {
   }
 
   .topbar,
+  .user-panel,
   .income-panel,
   .income-form,
   .history-item {
     display: grid;
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .auth-actions {
+    grid-template-columns: 1fr;
   }
 
   .stats-grid,

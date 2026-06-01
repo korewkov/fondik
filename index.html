@@ -7,7 +7,31 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-shell">
+  <section class="auth-screen" id="authScreen">
+    <div class="auth-card">
+      <div class="brand auth-brand">
+        <div class="brand-mark">₽</div>
+        <div>
+          <strong>Система денег</strong>
+          <span>личные фонды</span>
+        </div>
+      </div>
+      <p class="eyebrow">Вход в личный кабинет</p>
+      <h1>Ваши деньги, ваши правила</h1>
+      <p class="auth-copy">Зарегистрируйтесь или войдите, чтобы фонды, история и прогресс сохранялись отдельно для вашего аккаунта.</p>
+      <form class="auth-form" id="authForm">
+        <input id="authEmail" type="email" autocomplete="email" placeholder="Email" required>
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="Пароль" minlength="6" required>
+        <div class="auth-actions">
+          <button class="primary-btn" id="loginBtn" value="login" type="submit">Войти</button>
+          <button class="ghost-btn" id="signupBtn" value="signup" type="submit">Регистрация</button>
+        </div>
+      </form>
+      <p class="auth-message" id="authMessage"></p>
+    </div>
+  </section>
+
+  <div class="app-shell is-hidden" id="appShell">
     <aside class="sidebar" aria-label="Основная навигация">
       <div class="brand">
         <div class="brand-mark">₽</div>
@@ -35,6 +59,10 @@
         <div>
           <p class="eyebrow">Личная система фондов</p>
           <h1 id="screenTitle">Мои деньги</h1>
+        </div>
+        <div class="user-panel">
+          <span id="userEmail"></span>
+          <button class="ghost-btn compact" id="logoutBtn" type="button">Выйти</button>
         </div>
       </header>
 

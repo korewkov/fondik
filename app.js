@@ -2,9 +2,10 @@ const SUPABASE_CONFIG = {
   // Вставьте значения из Supabase Project Settings -> API.
   url: "https://ffusacesuumigyeoshkl.supabase.co",
   apiKey: "sb_publishable_n8uU9W5EP3CqMSBoeiXO6g_3DuxrpcN",
-  table: "finance_app_state",
-  stateId: "personal-finance"
+  table: "finance_user_state"
 };
+
+const AUTH_STORAGE_KEY = "moneySystem.authSession.v1";
 
 const defaultFunds = [
   {
@@ -146,8 +147,19 @@ let storageStatus = "Подключение к Supabase еще не настро
 let isStorageReady = false;
 let isBooted = false;
 let saveTimer;
+let session = loadSavedSession();
 
 const els = {
+  authScreen: document.querySelector("#authScreen"),
+  appShell: document.querySelector("#appShell"),
+  authForm: document.querySelector("#authForm"),
+  authEmail: document.querySelector("#authEmail"),
+  authPassword: document.querySelector("#authPassword"),
+  authMessage: document.querySelector("#authMessage"),
+  loginBtn: document.querySelector("#loginBtn"),
+  signupBtn: document.querySelector("#signupBtn"),
+  userEmail: document.querySelector("#userEmail"),
+  logoutBtn: document.querySelector("#logoutBtn"),
   navButtons: document.querySelectorAll(".nav-btn"),
   screenTitle: document.querySelector("#screenTitle"),
   screens: {
@@ -207,7 +219,9 @@ async function loadState() {
   }
 
   try {
-    const rows = await supabaseRequest("GET", `/${SUPABASE_CONFIG.table}?id=eq.${encodeURIComponent(SUPABASE_CONFIG.stateId)}&select=data&limit=1`);
+    await refreshSessionIfNeeded();
+    const userId = session.user.id;
+    const rows = await supabaseRequest("GET", `/${SUPABASE_CONFIG.table}?user_id=eq.${encodeURIComponent(userId)}&select=data&limit=1`);
 
     if (!rows.length) {
       const initialState = createDefaultState();
@@ -280,8 +294,9 @@ function saveState() {
 }
 
 async function persistState(nextState) {
+  await refreshSessionIfNeeded();
   await supabaseRequest("POST", `/${SUPABASE_CONFIG.table}`, {
-    id: SUPABASE_CONFIG.stateId,
+    user_id: session.user.id,
     data: nextState,
     updated_at: new Date().toISOString()
   }, "resolution=merge-duplicates,return=minimal");
@@ -292,7 +307,7 @@ async function supabaseRequest(method, path, body, prefer = "return=representati
     method,
     headers: {
       apikey: SUPABASE_CONFIG.apiKey,
-      Authorization: `Bearer ${SUPABASE_CONFIG.apiKey}`,
+      Authorization: `Bearer ${session?.access_token || SUPABASE_CONFIG.apiKey}`,
       "Content-Type": "application/json",
       Prefer: prefer
     },
@@ -310,6 +325,96 @@ async function supabaseRequest(method, path, body, prefer = "return=representati
 
   const text = await response.text();
   return text ? JSON.parse(text) : null;
+}
+
+async function authRequest(path, body, token = null) {
+  const response = await fetch(`${SUPABASE_CONFIG.url}/auth/v1${path}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_CONFIG.apiKey,
+      Authorization: `Bearer ${token || SUPABASE_CONFIG.apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.msg || data?.error_description || data?.message || `HTTP ${response.status}`);
+  }
+
+  return data;
+}
+
+function loadSavedSession() {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? normalizeSession(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeSession(value) {
+  if (!value?.access_token || !value?.refresh_token || !value?.user?.id) {
+    return null;
+  }
+
+  return {
+    access_token: value.access_token,
+    refresh_token: value.refresh_token,
+    expires_at: value.expires_at || Math.floor(Date.now() / 1000) + (value.expires_in || 3600),
+    user: value.user
+  };
+}
+
+function saveSession(nextSession) {
+  session = normalizeSession(nextSession);
+  if (session) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  }
+}
+
+function clearSession() {
+  session = null;
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+async function refreshSessionIfNeeded() {
+  if (!session) {
+    return;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (session.expires_at && session.expires_at - now > 60) {
+    return;
+  }
+
+  const refreshed = await authRequest("/token?grant_type=refresh_token", {
+    refresh_token: session.refresh_token
+  });
+  saveSession(refreshed);
+}
+
+async function signIn(email, password) {
+  const nextSession = await authRequest("/token?grant_type=password", { email, password });
+  saveSession(nextSession);
+  await bootAuthenticatedApp();
+  showToast("Вы вошли в систему.");
+}
+
+async function signUp(email, password) {
+  const result = await authRequest("/signup", { email, password });
+  if (result?.access_token) {
+    saveSession(result);
+    await bootAuthenticatedApp();
+    showToast("Аккаунт создан.");
+    return;
+  }
+
+  els.authMessage.textContent = "Аккаунт создан. Проверьте почту и подтвердите регистрацию, затем войдите.";
 }
 
 function isSupabaseConfigured() {
@@ -400,6 +505,13 @@ function render() {
   renderHistory();
   renderSettings();
   saveState();
+}
+
+function renderAuthState() {
+  const isSignedIn = Boolean(session?.user?.id);
+  els.authScreen.classList.toggle("is-hidden", isSignedIn);
+  els.appShell.classList.toggle("is-hidden", !isSignedIn);
+  els.userEmail.textContent = session?.user?.email || "";
 }
 
 function renderStats() {
@@ -526,6 +638,10 @@ function renderSettings() {
 }
 
 function getWarningText(percent, valid) {
+  if (!session) {
+    return "Войдите в аккаунт, чтобы работать со своими фондами.";
+  }
+
   if (!isStorageReady) {
     return "Подключите Supabase в app.js, чтобы изменения сохранялись в базе данных.";
   }
@@ -685,6 +801,11 @@ function switchScreen(screen) {
 }
 
 function canChangeData() {
+  if (!session) {
+    showToast("Сначала войдите в аккаунт.");
+    return false;
+  }
+
   if (isStorageReady) {
     return true;
   }
@@ -714,6 +835,47 @@ function showToast(message) {
 
 els.navButtons.forEach((button) => {
   button.addEventListener("click", () => switchScreen(button.dataset.screen));
+});
+
+els.authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  els.authMessage.textContent = "";
+  const email = els.authEmail.value.trim();
+  const password = els.authPassword.value;
+  const action = event.submitter?.value || "login";
+
+  els.loginBtn.disabled = true;
+  els.signupBtn.disabled = true;
+
+  try {
+    if (action === "signup") {
+      await signUp(email, password);
+    } else {
+      await signIn(email, password);
+    }
+  } catch (error) {
+    els.authMessage.textContent = translateAuthError(error.message);
+  } finally {
+    els.loginBtn.disabled = false;
+    els.signupBtn.disabled = false;
+  }
+});
+
+els.logoutBtn.addEventListener("click", async () => {
+  try {
+    if (session?.access_token) {
+      await authRequest("/logout", null, session.access_token);
+    }
+  } catch {
+    // Local logout still matters if the network request fails.
+  }
+
+  clearSession();
+  state = createDefaultState();
+  isStorageReady = false;
+  storageStatus = "Войдите, чтобы загрузить данные из Supabase.";
+  renderAuthState();
+  render();
 });
 
 els.incomeForm.addEventListener("submit", (event) => {
@@ -765,9 +927,38 @@ els.clearHistoryBtn.addEventListener("click", () => {
 els.resetMonthBtn.addEventListener("click", resetMonth);
 
 async function initApp() {
-  state = await loadState();
   isBooted = true;
+  if (session) {
+    await bootAuthenticatedApp();
+  } else {
+    storageStatus = "Войдите, чтобы загрузить данные из Supabase.";
+    renderAuthState();
+    render();
+  }
+}
+
+async function bootAuthenticatedApp() {
+  renderAuthState();
+  state = await loadState();
+  renderAuthState();
   render();
+}
+
+function translateAuthError(message) {
+  const lower = message.toLowerCase();
+  if (lower.includes("invalid login") || lower.includes("invalid credentials")) {
+    return "Неверный email или пароль.";
+  }
+
+  if (lower.includes("already registered") || lower.includes("already exists")) {
+    return "Пользователь с таким email уже зарегистрирован.";
+  }
+
+  if (lower.includes("password")) {
+    return "Пароль должен быть не короче 6 символов.";
+  }
+
+  return `Ошибка авторизации: ${message}`;
 }
 
 initApp();
