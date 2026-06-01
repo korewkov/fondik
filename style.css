@@ -83,13 +83,33 @@ input[type="file"] {
   padding: 24px;
 }
 
+.auth-modal {
+  width: min(560px, calc(100% - 28px));
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.auth-modal::backdrop {
+  background: rgba(19, 34, 58, 0.28);
+  backdrop-filter: blur(6px);
+}
+
 .auth-card {
+  position: relative;
   width: min(520px, 100%);
   border: 2px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 10px 10px 0 rgba(24, 50, 79, 0.14);
   padding: 28px;
+}
+
+.auth-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 
 .auth-brand {
@@ -159,6 +179,16 @@ input[type="file"] {
   color: var(--ink);
   font-weight: 900;
   font-size: 23px;
+}
+
+.brand-logo {
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--sky);
+  object-fit: cover;
 }
 
 .brand strong,
@@ -252,6 +282,12 @@ input[type="file"] {
 }
 
 .user-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-account {
   display: flex;
   align-items: center;
   gap: 10px;

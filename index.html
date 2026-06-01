@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Система денег</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/favicon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <section class="auth-screen" id="authScreen">
+  <dialog class="auth-modal" id="authModal">
     <div class="auth-card">
+      <button class="icon-btn auth-close" id="authCloseBtn" type="button" aria-label="Закрыть">×</button>
       <div class="brand auth-brand">
-        <div class="brand-mark">₽</div>
+        <img class="brand-logo" src="assets/logo.png" alt="">
         <div>
           <strong>Система денег</strong>
           <span>личные фонды</span>
@@ -29,12 +32,12 @@
       </form>
       <p class="auth-message" id="authMessage"></p>
     </div>
-  </section>
+  </dialog>
 
-  <div class="app-shell is-hidden" id="appShell">
+  <div class="app-shell" id="appShell">
     <aside class="sidebar" aria-label="Основная навигация">
       <div class="brand">
-        <div class="brand-mark">₽</div>
+        <img class="brand-logo" src="assets/logo.png" alt="">
         <div>
           <strong>Система денег</strong>
           <span>фонды и цели</span>
@@ -61,8 +64,11 @@
           <h1 id="screenTitle">Мои деньги</h1>
         </div>
         <div class="user-panel">
-          <span id="userEmail"></span>
-          <button class="ghost-btn compact" id="logoutBtn" type="button">Выйти</button>
+          <button class="primary-btn compact" id="authOpenBtn" type="button">Войти</button>
+          <div class="user-account is-hidden" id="userAccount">
+            <span id="userEmail"></span>
+            <button class="ghost-btn compact" id="logoutBtn" type="button">Выйти</button>
+          </div>
         </div>
       </header>
 

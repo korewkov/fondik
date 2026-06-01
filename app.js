@@ -150,7 +150,9 @@ let saveTimer;
 let session = loadSavedSession();
 
 const els = {
-  authScreen: document.querySelector("#authScreen"),
+  authModal: document.querySelector("#authModal"),
+  authOpenBtn: document.querySelector("#authOpenBtn"),
+  authCloseBtn: document.querySelector("#authCloseBtn"),
   appShell: document.querySelector("#appShell"),
   authForm: document.querySelector("#authForm"),
   authEmail: document.querySelector("#authEmail"),
@@ -158,6 +160,7 @@ const els = {
   authMessage: document.querySelector("#authMessage"),
   loginBtn: document.querySelector("#loginBtn"),
   signupBtn: document.querySelector("#signupBtn"),
+  userAccount: document.querySelector("#userAccount"),
   userEmail: document.querySelector("#userEmail"),
   logoutBtn: document.querySelector("#logoutBtn"),
   navButtons: document.querySelectorAll(".nav-btn"),
@@ -509,9 +512,13 @@ function render() {
 
 function renderAuthState() {
   const isSignedIn = Boolean(session?.user?.id);
-  els.authScreen.classList.toggle("is-hidden", isSignedIn);
-  els.appShell.classList.toggle("is-hidden", !isSignedIn);
+  els.authOpenBtn.classList.toggle("is-hidden", isSignedIn);
+  els.userAccount.classList.toggle("is-hidden", !isSignedIn);
   els.userEmail.textContent = session?.user?.email || "";
+
+  if (isSignedIn && els.authModal.open) {
+    els.authModal.close();
+  }
 }
 
 function renderStats() {
@@ -835,6 +842,21 @@ function showToast(message) {
 
 els.navButtons.forEach((button) => {
   button.addEventListener("click", () => switchScreen(button.dataset.screen));
+});
+
+els.authOpenBtn.addEventListener("click", () => {
+  els.authMessage.textContent = "";
+  els.authModal.showModal();
+});
+
+els.authCloseBtn.addEventListener("click", () => {
+  els.authModal.close();
+});
+
+els.authModal.addEventListener("click", (event) => {
+  if (event.target === els.authModal) {
+    els.authModal.close();
+  }
 });
 
 els.authForm.addEventListener("submit", async (event) => {
