@@ -47,7 +47,6 @@
       <nav class="nav">
         <button class="nav-btn is-active" data-screen="dashboard">Дашборд</button>
         <button class="nav-btn" data-screen="history">История</button>
-        <button class="nav-btn" data-screen="settings">Настройки</button>
       </nav>
 
       <div class="sidebar-card">
@@ -95,7 +94,10 @@
                 <h2>Фонды</h2>
                 <span id="fundCount"></span>
               </div>
-              <button class="primary-btn compact" id="addFundBtn" type="button">Новый фонд</button>
+              <div class="section-actions">
+                <button class="ghost-btn compact danger" id="resetMonthBtn" type="button">Сбросить месяц</button>
+                <button class="primary-btn compact" id="addFundBtn" type="button">Новый фонд</button>
+              </div>
             </div>
             <div class="fund-grid" id="fundGrid"></div>
           </section>
@@ -126,34 +128,6 @@
           <button class="ghost-btn danger" id="clearHistoryBtn" type="button">Очистить историю</button>
         </div>
         <div class="history-list" id="historyList"></div>
-      </section>
-
-      <section class="screen" id="settingsScreen">
-        <div class="settings-grid">
-          <article class="settings-card">
-            <h2>Месяц</h2>
-            <p>Сброс месяца обнуляет месячные накопления и добавляет запись в историю. Балансы фондов и сами фонды остаются на месте.</p>
-            <button class="primary-btn danger-fill" id="resetMonthBtn" type="button">Сбросить месяц</button>
-          </article>
-
-          <article class="settings-card">
-            <h2>Данные</h2>
-            <p>Фонды, история и настройки сохраняются в Supabase. Можно открыть приложение на другом устройстве и продолжить с теми же данными.</p>
-          </article>
-
-          <article class="settings-card">
-            <h2>Проверка распределения</h2>
-            <p id="settingsPercentText"></p>
-            <div class="meter">
-              <span id="settingsPercentMeter"></span>
-            </div>
-          </article>
-
-          <article class="settings-card">
-            <h2>Supabase</h2>
-            <p id="storageStatusText">Проверяем подключение к базе данных.</p>
-          </article>
-        </div>
       </section>
     </main>
   </div>

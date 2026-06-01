@@ -167,8 +167,7 @@ const els = {
   screenTitle: document.querySelector("#screenTitle"),
   screens: {
     dashboard: document.querySelector("#dashboardScreen"),
-    history: document.querySelector("#historyScreen"),
-    settings: document.querySelector("#settingsScreen")
+    history: document.querySelector("#historyScreen")
   },
   incomeForm: document.querySelector("#incomeForm"),
   incomeAmount: document.querySelector("#incomeAmount"),
@@ -200,9 +199,6 @@ const els = {
   historyList: document.querySelector("#historyList"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
   resetMonthBtn: document.querySelector("#resetMonthBtn"),
-  settingsPercentText: document.querySelector("#settingsPercentText"),
-  settingsPercentMeter: document.querySelector("#settingsPercentMeter"),
-  storageStatusText: document.querySelector("#storageStatusText"),
   toast: document.querySelector("#toast")
 };
 
@@ -506,7 +502,6 @@ function render() {
   renderFunds();
   renderDistribution();
   renderHistory();
-  renderSettings();
   saveState();
 }
 
@@ -633,15 +628,6 @@ function renderHistory() {
         <div class="history-amount">${money(item.amount)}</div>
       </article>
     `).join("");
-}
-
-function renderSettings() {
-  const percent = totalPercent();
-  els.settingsPercentText.textContent = percent === 100
-    ? "Сумма процентов равна 100%. Доходы можно распределять."
-    : `Сумма процентов равна ${percent}%. Нужно настроить фонды до ровно 100%.`;
-  els.settingsPercentMeter.style.width = `${Math.min(100, percent)}%`;
-  els.storageStatusText.textContent = storageStatus;
 }
 
 function getWarningText(percent, valid) {
@@ -801,8 +787,7 @@ function switchScreen(screen) {
 
   const titles = {
     dashboard: "Мои деньги",
-    history: "История операций",
-    settings: "Настройки"
+    history: "История операций"
   };
   els.screenTitle.textContent = titles[screen];
 }

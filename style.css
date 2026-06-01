@@ -204,7 +204,6 @@ input[type="file"] {
 .fund-meta,
 .stat-card span,
 .history-meta,
-.settings-card p,
 .donut-center span,
 .legend span {
   color: var(--muted);
@@ -245,7 +244,6 @@ input[type="file"] {
 .fund-card,
 .analytics-panel,
 .history-item,
-.settings-card,
 .modal-card {
   border: 2px solid var(--line);
   border-radius: var(--radius);
@@ -274,11 +272,16 @@ input[type="file"] {
 .section-heading,
 .modal-head,
 .modal-actions,
-.settings-actions {
+.section-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+}
+
+.section-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .user-panel {
@@ -706,20 +709,6 @@ h2 {
   font-size: 20px;
 }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
-  gap: 14px;
-}
-
-.settings-card {
-  padding: 18px;
-}
-
-.settings-card p {
-  line-height: 1.55;
-}
-
 .fund-modal {
   width: min(720px, calc(100% - 28px));
   border: 0;
@@ -792,8 +781,7 @@ h2 {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 
-  .dashboard-layout,
-  .settings-grid {
+  .dashboard-layout {
     grid-template-columns: 1fr;
   }
 
@@ -864,6 +852,7 @@ h2 {
 
   .section-heading,
   .section-heading.wide,
+  .section-actions,
   .modal-actions {
     align-items: stretch;
     flex-direction: column;
