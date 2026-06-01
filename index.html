@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Система денег</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Основная навигация">
+      <div class="brand">
+        <div class="brand-mark">₽</div>
+        <div>
+          <strong>Система денег</strong>
+          <span>фонды и цели</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn is-active" data-screen="dashboard">Дашборд</button>
+        <button class="nav-btn" data-screen="history">История</button>
+        <button class="nav-btn" data-screen="settings">Настройки</button>
+      </nav>
+
+      <div class="sidebar-card">
+        <span>Сумма процентов</span>
+        <strong id="sidebarPercent">100%</strong>
+        <small id="sidebarPercentHint">Распределение готово</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Личная система фондов</p>
+          <h1 id="screenTitle">Мои деньги</h1>
+        </div>
+      </header>
+
+      <section class="screen is-visible" id="dashboardScreen">
+        <div class="income-panel">
+          <div class="income-copy">
+            <span>Новое поступление</span>
+            <strong>Распределить доход по фондам</strong>
+          </div>
+          <form class="income-form" id="incomeForm">
+            <input id="incomeAmount" type="number" min="1" step="0.01" placeholder="Например, 23000" required>
+            <input id="incomeComment" type="text" maxlength="80" placeholder="Комментарий">
+            <button class="primary-btn" id="distributeBtn" type="submit">Распределить</button>
+          </form>
+          <div class="warning" id="percentWarning" role="alert"></div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="dashboard-layout">
+          <section class="funds-section">
+            <div class="section-heading">
+              <div>
+                <h2>Фонды</h2>
+                <span id="fundCount"></span>
+              </div>
+              <button class="primary-btn compact" id="addFundBtn" type="button">Новый фонд</button>
+            </div>
+            <div class="fund-grid" id="fundGrid"></div>
+          </section>
+
+          <aside class="analytics-panel">
+            <div class="section-heading">
+              <h2>Распределение</h2>
+              <span id="distributionLabel"></span>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut" id="donutChart"></div>
+              <div class="donut-center">
+                <strong id="donutTotal">100%</strong>
+                <span>в фондах</span>
+              </div>
+            </div>
+            <div class="legend" id="distributionLegend"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="screen" id="historyScreen">
+        <div class="section-heading wide">
+          <div>
+            <p class="eyebrow">Журнал операций</p>
+            <h2>История</h2>
+          </div>
+          <button class="ghost-btn danger" id="clearHistoryBtn" type="button">Очистить историю</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+
+      <section class="screen" id="settingsScreen">
+        <div class="settings-grid">
+          <article class="settings-card">
+            <h2>Месяц</h2>
+            <p>Сброс месяца обнуляет месячные накопления и добавляет запись в историю. Балансы фондов и сами фонды остаются на месте.</p>
+            <button class="primary-btn danger-fill" id="resetMonthBtn" type="button">Сбросить месяц</button>
+          </article>
+
+          <article class="settings-card">
+            <h2>Данные</h2>
+            <p>Фонды, история и настройки сохраняются в Supabase. Можно открыть приложение на другом устройстве и продолжить с теми же данными.</p>
+          </article>
+
+          <article class="settings-card">
+            <h2>Проверка распределения</h2>
+            <p id="settingsPercentText"></p>
+            <div class="meter">
+              <span id="settingsPercentMeter"></span>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <h2>Supabase</h2>
+            <p id="storageStatusText">Проверяем подключение к базе данных.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="fund-modal" id="fundModal">
+    <form method="dialog" class="modal-card" id="fundForm">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Фонд</p>
+          <h2 id="fundModalTitle">Новый фонд</h2>
+        </div>
+        <button class="icon-btn" value="cancel" type="submit" aria-label="Закрыть">×</button>
+      </div>
+
+      <input id="fundId" type="hidden">
+      <div class="form-grid">
+        <label>Название
+          <input id="fundName" type="text" required maxlength="40">
+        </label>
+        <label>Иконка
+          <input id="fundIcon" type="text" required maxlength="3">
+        </label>
+        <label>Цвет
+          <input id="fundColor" type="color" required>
+        </label>
+        <label>Баланс
+          <input id="fundBalance" type="number" min="0" step="0.01" required>
+        </label>
+        <label>Цель
+          <input id="fundTarget" type="number" min="0" step="0.01" required>
+        </label>
+        <label>Процент
+          <input id="fundPercent" type="number" min="0" max="100" step="0.1" required>
+        </label>
+        <label>Приоритет
+          <input id="fundPriority" type="number" min="1" step="1" required>
+        </label>
+        <label class="span-2">Описание
+          <textarea id="fundDescription" rows="3" maxlength="180"></textarea>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button class="ghost-btn" value="cancel" type="submit">Отмена</button>
+        <button class="primary-btn" id="saveFundBtn" value="default" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
