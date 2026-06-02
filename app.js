@@ -86,6 +86,7 @@ let isBooted = false;
 let saveTimer;
 let session = null;
 let pendingResetAction = null;
+let briefingStep = 0;
 
 const els = {
   authModal: document.querySelector("#authModal"),
@@ -110,6 +111,7 @@ const els = {
   screenTitle: document.querySelector("#screenTitle"),
   screens: {
     dashboard: document.querySelector("#dashboardScreen"),
+    briefing: document.querySelector("#briefingScreen"),
     history: document.querySelector("#historyScreen")
   },
   incomeForm: document.querySelector("#incomeForm"),
@@ -127,6 +129,34 @@ const els = {
   distributionLegend: document.querySelector("#distributionLegend"),
   addFundBtn: document.querySelector("#addFundBtn"),
   addMonthBtn: document.querySelector("#addMonthBtn"),
+  openBriefingBtn: document.querySelector("#openBriefingBtn"),
+  startBriefingBtn: document.querySelector("#startBriefingBtn"),
+  briefingSummary: document.querySelector("#briefingSummary"),
+  briefingModal: document.querySelector("#briefingModal"),
+  briefingForm: document.querySelector("#briefingForm"),
+  briefingStepTitle: document.querySelector("#briefingStepTitle"),
+  briefingStepLabel: document.querySelector("#briefingStepLabel"),
+  briefingMeter: document.querySelector("#briefingMeter"),
+  briefingSteps: document.querySelectorAll(".briefing-step"),
+  briefingBackBtn: document.querySelector("#briefingBackBtn"),
+  briefingNextBtn: document.querySelector("#briefingNextBtn"),
+  briefingApplyBtn: document.querySelector("#briefingApplyBtn"),
+  briefingPreview: document.querySelector("#briefingPreview"),
+  briefMonthlyIncome: document.querySelector("#briefMonthlyIncome"),
+  briefIncomeType: document.querySelector("#briefIncomeType"),
+  briefIncomeFrequency: document.querySelector("#briefIncomeFrequency"),
+  requiredPaymentList: document.querySelector("#requiredPaymentList"),
+  addRequiredPaymentBtn: document.querySelector("#addRequiredPaymentBtn"),
+  debtList: document.querySelector("#debtList"),
+  addDebtBtn: document.querySelector("#addDebtBtn"),
+  comfortList: document.querySelector("#comfortList"),
+  addComfortBtn: document.querySelector("#addComfortBtn"),
+  goalList: document.querySelector("#goalList"),
+  addGoalBtn: document.querySelector("#addGoalBtn"),
+  briefCurrentReserve: document.querySelector("#briefCurrentReserve"),
+  briefReserveGoal: document.querySelector("#briefReserveGoal"),
+  briefHasBusiness: document.querySelector("#briefHasBusiness"),
+  briefBusinessNeedsInvestment: document.querySelector("#briefBusinessNeedsInvestment"),
   fundModal: document.querySelector("#fundModal"),
   fundForm: document.querySelector("#fundForm"),
   fundModalTitle: document.querySelector("#fundModalTitle"),
@@ -165,6 +195,7 @@ function createDefaultState() {
     funds: defaultFunds.map((fund) => ({ ...fund })),
     history: [],
     months: [],
+    briefing: null,
     currentMonthKey: monthKeyFromDate(new Date()),
     createdAt: new Date().toISOString()
   };
@@ -258,6 +289,7 @@ function normalizeState(value) {
     funds: Array.isArray(value?.funds) ? value.funds.map(normalizeFund) : defaultFunds.map((fund) => ({ ...fund })),
     history: Array.isArray(value?.history) ? value.history : [],
     months: Array.isArray(value?.months) ? value.months.map(normalizeMonth).filter(Boolean) : [],
+    briefing: value?.briefing || null,
     currentMonthKey: value?.currentMonthKey || monthKeyFromDate(new Date()),
     createdAt: value?.createdAt || new Date().toISOString()
   };
@@ -301,7 +333,9 @@ function normalizeFund(fund) {
     target: Number(fund.target) || 0,
     percent: Number(fund.percent) || 0,
     priority: Number(fund.priority) || 1,
-    description: fund.description || ""
+    description: fund.description || "",
+    type: fund.type || "custom",
+    isFrozen: Boolean(fund.isFrozen)
   };
 }
 
@@ -572,8 +606,12 @@ function sortedFunds() {
   return [...state.funds].sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name, "ru"));
 }
 
+function activeFunds() {
+  return state.funds.filter((fund) => !fund.isFrozen);
+}
+
 function totalPercent() {
-  return roundMoney(state.funds.reduce((sum, fund) => sum + Number(fund.percent || 0), 0));
+  return roundMoney(activeFunds().reduce((sum, fund) => sum + Number(fund.percent || 0), 0));
 }
 
 function isDistributionValid() {
@@ -662,6 +700,7 @@ function render() {
   renderDistribution();
   renderMonthList();
   renderHistory();
+  renderBriefingSummary();
   saveState();
 }
 
@@ -797,12 +836,12 @@ function renderFunds() {
   els.fundGrid.innerHTML = funds.map((fund) => {
     const progress = monthProgressOf(fund);
     return `
-      <article class="fund-card" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
+      <article class="fund-card ${fund.isFrozen ? "is-frozen" : ""}" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
         <div class="fund-head">
           <div class="fund-icon">${escapeHtml(fund.icon)}</div>
           <div class="fund-title">
             <h3>${escapeHtml(fund.name)}</h3>
-            <div class="fund-meta">${fund.percent}% дохода · месяц</div>
+            <div class="fund-meta">${fund.isFrozen ? "заморожен" : `${fund.percent}% дохода · месяц`}</div>
           </div>
           <div class="fund-actions">
             <button class="icon-btn" type="button" data-edit="${fund.id}" aria-label="Редактировать ${escapeHtml(fund.name)}">✎</button>
@@ -827,7 +866,7 @@ function renderFunds() {
           <span>Осталось ${money(monthRemainingOf(fund))}</span>
         </div>
         <div class="fund-footer">
-          <span>${fund.percent}% от доходов</span>
+          <span>${fund.isFrozen ? "не участвует в распределении" : `${fund.percent}% от доходов`}</span>
           <span>Приоритет ${fund.priority}</span>
         </div>
       </article>
@@ -837,8 +876,9 @@ function renderFunds() {
 
 function renderDistribution() {
   const funds = sortedFunds();
+  const active = funds.filter((fund) => !fund.isFrozen);
   let cursor = 0;
-  const slices = funds.map((fund) => {
+  const slices = active.map((fund) => {
     const from = cursor;
     cursor += fund.percent;
     return `${fund.color} ${from}% ${cursor}%`;
@@ -851,7 +891,7 @@ function renderDistribution() {
     <div class="legend-row">
       <i class="legend-dot" style="--dot: ${fund.color}"></i>
       <span>${escapeHtml(fund.name)}</span>
-      <strong>${fund.percent}%</strong>
+      <strong>${fund.isFrozen ? "пауза" : `${fund.percent}%`}</strong>
     </div>
   `).join("");
 }
@@ -941,7 +981,8 @@ function distributeIncome(amount, comment) {
     return;
   }
 
-  const allocations = state.funds.map((fund) => {
+  const fundsToAllocate = activeFunds();
+  const allocations = fundsToAllocate.map((fund) => {
     const value = roundMoney(amount * fund.percent / 100);
     fund.balance = roundMoney(fund.balance + value);
     fund.monthBalance = roundMoney((fund.monthBalance || 0) + value);
@@ -963,7 +1004,7 @@ function distributeIncome(amount, comment) {
     allocations
   });
 
-  showToast(`Распределено ${money(amount)} по ${state.funds.length} фондам.`);
+  showToast(`Распределено ${money(amount)} по ${fundsToAllocate.length} фондам.`);
   els.incomeForm.reset();
   render();
 }
@@ -989,6 +1030,7 @@ function saveFundFromForm() {
     return;
   }
 
+  const previousFund = state.funds.find((fund) => fund.id === els.fundId.value);
   const data = {
     id: els.fundId.value || createId(),
     name: els.fundName.value.trim(),
@@ -1000,7 +1042,9 @@ function saveFundFromForm() {
     target: roundMoney(els.fundTarget.value),
     percent: roundMoney(els.fundPercent.value),
     priority: Number(els.fundPriority.value) || 1,
-    description: els.fundDescription.value.trim()
+    description: els.fundDescription.value.trim(),
+    type: previousFund?.type || "custom",
+    isFrozen: Boolean(previousFund?.isFrozen)
   };
 
   const index = state.funds.findIndex((fund) => fund.id === data.id);
@@ -1113,7 +1157,7 @@ function openFundDetails(fund) {
     <p class="detail-description">${escapeHtml(fund.description || "Без описания")}</p>
     <div class="detail-row">
       <span>${forecastFor(fund)}</span>
-      <span>${fund.percent}% дохода · приоритет ${fund.priority}</span>
+      <span>${fund.isFrozen ? "заморожен" : `${fund.percent}% дохода`} · приоритет ${fund.priority}</span>
     </div>
   `;
   els.fundDetailModal.showModal();
@@ -1231,6 +1275,553 @@ function confirmPendingReset() {
   }
 }
 
+const briefingSteps = [
+  "Доход",
+  "Обязательные платежи",
+  "Долги",
+  "Базовая жизнь",
+  "Комфорт и резерв",
+  "Цели и развитие"
+];
+
+function openBriefing() {
+  if (!canChangeData()) {
+    return;
+  }
+
+  if (!els.requiredPaymentList.children.length) {
+    addRequiredPaymentRow();
+  }
+
+  if (!els.comfortList.children.length) {
+    addComfortRow();
+  }
+
+  if (!els.goalList.children.length) {
+    addGoalRow();
+  }
+
+  briefingStep = 0;
+  updateBriefingStep();
+  els.briefingModal.showModal();
+}
+
+function updateBriefingStep() {
+  els.briefingSteps.forEach((step, index) => {
+    step.classList.toggle("is-active", index === briefingStep);
+  });
+
+  els.briefingStepTitle.textContent = briefingSteps[briefingStep];
+  els.briefingStepLabel.textContent = `Шаг ${briefingStep + 1} из ${briefingSteps.length}`;
+  els.briefingMeter.style.setProperty("--progress", `${roundMoney((briefingStep + 1) / briefingSteps.length * 100)}%`);
+  els.briefingBackBtn.disabled = briefingStep === 0;
+  els.briefingNextBtn.classList.toggle("is-hidden", briefingStep === briefingSteps.length - 1);
+  els.briefingApplyBtn.classList.toggle("is-hidden", briefingStep !== briefingSteps.length - 1);
+  renderBriefingPreview();
+}
+
+function moveBriefingStep(direction) {
+  briefingStep = Math.min(briefingSteps.length - 1, Math.max(0, briefingStep + direction));
+  updateBriefingStep();
+}
+
+function addRequiredPaymentRow(value = {}) {
+  els.requiredPaymentList.insertAdjacentHTML("beforeend", `
+    <div class="briefing-item" data-briefing-item>
+      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Название">
+      <input data-field="amount" type="number" min="0" step="1" value="${value.amount || ""}" placeholder="Сумма">
+      <input data-field="date" type="text" value="${escapeHtml(value.date || "")}" placeholder="Дата">
+      <select data-field="hasOverdue">
+        <option value="false">Нет просрочки</option>
+        <option value="true" ${value.hasOverdue ? "selected" : ""}>Есть просрочка</option>
+      </select>
+      <select data-field="criticality">
+        ${["Очень высокая", "Высокая", "Средняя", "Низкая"].map((item) => `<option ${value.criticality === item ? "selected" : ""}>${item}</option>`).join("")}
+      </select>
+      <button class="icon-btn" type="button" data-remove-briefing-item aria-label="Удалить">×</button>
+    </div>
+  `);
+}
+
+function addDebtRow(value = {}) {
+  els.debtList.insertAdjacentHTML("beforeend", `
+    <div class="briefing-item" data-briefing-item>
+      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Долг">
+      <input data-field="balance" type="number" min="0" step="1" value="${value.balance || ""}" placeholder="Остаток">
+      <input data-field="monthlyPayment" type="number" min="0" step="1" value="${value.monthlyPayment || ""}" placeholder="Платеж">
+      <input data-field="interestRate" type="text" value="${escapeHtml(value.interestRate || "")}" placeholder="Ставка">
+      <select data-field="hasOverdue">
+        <option value="false">Нет просрочки</option>
+        <option value="true" ${value.hasOverdue ? "selected" : ""}>Есть просрочка</option>
+      </select>
+      <select data-field="type">
+        ${["Кредит", "Кредитная карта", "Рассрочка", "Долг человеку", "Ипотека", "Другое"].map((item) => `<option ${value.type === item ? "selected" : ""}>${item}</option>`).join("")}
+      </select>
+      <button class="icon-btn" type="button" data-remove-briefing-item aria-label="Удалить">×</button>
+    </div>
+  `);
+}
+
+function addComfortRow(value = {}) {
+  els.comfortList.insertAdjacentHTML("beforeend", `
+    <div class="briefing-item compact-briefing-item" data-briefing-item>
+      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Например, кофе">
+      <input data-field="amount" type="number" min="0" step="1" value="${value.amount || ""}" placeholder="Сумма">
+      <select data-field="canReduce">
+        <option value="true">Можно уменьшить</option>
+        <option value="false" ${value.canReduce === false ? "selected" : ""}>Нельзя уменьшить</option>
+      </select>
+      <button class="icon-btn" type="button" data-remove-briefing-item aria-label="Удалить">×</button>
+    </div>
+  `);
+}
+
+function addGoalRow(value = {}) {
+  els.goalList.insertAdjacentHTML("beforeend", `
+    <div class="briefing-item" data-briefing-item>
+      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Цель">
+      <input data-field="amount" type="number" min="0" step="1" value="${value.amount || ""}" placeholder="Стоимость">
+      <select data-field="priority">
+        ${[5, 4, 3, 2, 1].map((item) => `<option value="${item}" ${Number(value.priority) === item ? "selected" : ""}>Приоритет ${item}</option>`).join("")}
+      </select>
+      <select data-field="type">
+        ${["Дом / квартира", "Бизнес", "Техника", "Образование", "Здоровье", "Отдых", "Хобби", "Другое"].map((item) => `<option ${value.type === item ? "selected" : ""}>${item}</option>`).join("")}
+      </select>
+      <input data-field="urgency" type="text" value="${escapeHtml(value.urgency || "")}" placeholder="Срочность">
+      <button class="icon-btn" type="button" data-remove-briefing-item aria-label="Удалить">×</button>
+    </div>
+  `);
+}
+
+function collectBriefingRows(listNode, numericFields = []) {
+  return [...listNode.querySelectorAll("[data-briefing-item]")]
+    .map((row) => {
+      const item = {};
+      row.querySelectorAll("[data-field]").forEach((field) => {
+        const key = field.dataset.field;
+        if (field.value === "true" || field.value === "false") {
+          item[key] = field.value === "true";
+        } else if (numericFields.includes(key)) {
+          item[key] = roundMoney(field.value);
+        } else {
+          item[key] = field.value.trim();
+        }
+      });
+      return item;
+    })
+    .filter((item) => {
+      const hasName = typeof item.name === "string" && item.name.length > 0;
+      const hasNumericValue = numericFields.some((key) => Number(item[key]) > 0);
+      return hasName || hasNumericValue;
+    });
+}
+
+function collectBriefingData() {
+  const lifeExpenses = {};
+  document.querySelectorAll("[data-life-expense]").forEach((input) => {
+    lifeExpenses[input.dataset.lifeExpense] = roundMoney(input.value);
+  });
+
+  return {
+    monthlyIncome: roundMoney(els.briefMonthlyIncome.value),
+    incomeType: els.briefIncomeType.value,
+    incomeFrequency: els.briefIncomeFrequency.value,
+    requiredPayments: collectBriefingRows(els.requiredPaymentList, ["amount"]),
+    debts: collectBriefingRows(els.debtList, ["balance", "monthlyPayment"]),
+    lifeExpenses,
+    comfortExpenses: collectBriefingRows(els.comfortList, ["amount"]),
+    currentReserve: roundMoney(els.briefCurrentReserve.value),
+    reserveGoal: roundMoney(els.briefReserveGoal.value),
+    goals: collectBriefingRows(els.goalList, ["amount", "priority"]),
+    hasBusiness: els.briefHasBusiness.value,
+    businessNeedsInvestment: els.briefBusinessNeedsInvestment.value
+  };
+}
+
+function criticalityPriority(value) {
+  return {
+    "Очень высокая": 5,
+    "Высокая": 5,
+    "Средняя": 4,
+    "Низкая": 3
+  }[value] || 4;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function createBriefFund(data) {
+  return {
+    id: createId(),
+    icon: data.icon || "◌",
+    color: data.color || "#52d6ff",
+    balance: data.balance || 0,
+    monthBalance: 0,
+    monthTarget: roundMoney(data.monthTarget || 0),
+    target: roundMoney(data.target || data.monthTarget || 0),
+    percent: 0,
+    priority: data.priority || 3,
+    name: data.name,
+    description: data.description || "",
+    type: data.type,
+    block: data.block,
+    weight: Math.max(1, Number(data.weight) || 1),
+    isFrozen: Boolean(data.isFrozen)
+  };
+}
+
+function determineBriefingMode(data, requiredTotal) {
+  const income = data.monthlyIncome || 1;
+  const requiredPercent = requiredTotal / income * 100;
+  const hasOverdue = data.requiredPayments.some((item) => item.hasOverdue)
+    || data.debts.some((item) => item.hasOverdue);
+
+  if (requiredPercent >= 70 || hasOverdue) {
+    return { name: "Антикризисный", requiredPercent };
+  }
+
+  if (requiredPercent >= 50) {
+    return { name: "Стабилизация", requiredPercent };
+  }
+
+  return { name: "Развитие", requiredPercent };
+}
+
+function blockSharesFor(mode, requiredPercent, presentBlocks) {
+  const shares = {
+    obligations: 0,
+    life: 0,
+    comfort: 0,
+    reserve: 0,
+    goals: 0
+  };
+
+  if (mode === "Антикризисный") {
+    shares.obligations = presentBlocks.obligations ? clamp(requiredPercent, 75, 85) : 0;
+    shares.comfort = presentBlocks.comfort ? 5 : 0;
+    shares.reserve = presentBlocks.reserve ? 5 : 0;
+    shares.goals = 0;
+  } else if (mode === "Стабилизация") {
+    shares.obligations = presentBlocks.obligations ? clamp(requiredPercent, 50, 70) : 0;
+    shares.life = presentBlocks.life ? 20 : 0;
+    shares.comfort = presentBlocks.comfort ? 5 : 0;
+    shares.reserve = presentBlocks.reserve ? 10 : 0;
+    shares.goals = presentBlocks.goals ? 10 : 0;
+  } else {
+    shares.obligations = presentBlocks.obligations ? clamp(requiredPercent, 20, 50) : 0;
+    shares.life = presentBlocks.life ? 25 : 0;
+    shares.comfort = presentBlocks.comfort ? 8 : 0;
+    shares.reserve = presentBlocks.reserve ? 12 : 0;
+    shares.goals = presentBlocks.goals ? 25 : 0;
+  }
+
+  const used = Object.values(shares).reduce((sum, value) => sum + value, 0);
+  if (used > 100) {
+    Object.keys(shares).forEach((key) => {
+      shares[key] = roundMoney(shares[key] / used * 100);
+    });
+    return shares;
+  }
+
+  const preferredBlock = presentBlocks.life ? "life" : Object.keys(presentBlocks).find((key) => presentBlocks[key]);
+  if (preferredBlock) {
+    shares[preferredBlock] += Math.max(0, 100 - used);
+  }
+
+  return shares;
+}
+
+function assignBriefingPercents(funds, shares) {
+  const active = funds.filter((fund) => !fund.isFrozen);
+  Object.entries(shares).forEach(([block, share]) => {
+    const blockFunds = active.filter((fund) => fund.block === block);
+    const totalWeight = blockFunds.reduce((sum, fund) => sum + fund.weight, 0);
+    blockFunds.forEach((fund) => {
+      fund.percent = totalWeight ? roundMoney(share * fund.weight / totalWeight) : 0;
+    });
+  });
+
+  const activeTotal = active.reduce((sum, fund) => sum + fund.percent, 0);
+  const diff = roundMoney(100 - activeTotal);
+  if (active.length && diff !== 0) {
+    active[0].percent = roundMoney(active[0].percent + diff);
+  }
+
+  funds.filter((fund) => fund.isFrozen).forEach((fund) => {
+    fund.percent = 0;
+  });
+
+  return funds.map(({ block, weight, ...fund }) => fund);
+}
+
+function buildBriefingResult(data) {
+  const requiredTotal = data.requiredPayments.reduce((sum, item) => sum + item.amount, 0)
+    + data.debts.reduce((sum, debt) => sum + debt.monthlyPayment, 0);
+  const mode = determineBriefingMode(data, requiredTotal);
+  const funds = [];
+
+  data.requiredPayments.forEach((payment) => {
+    if (!payment.name || !payment.amount) {
+      return;
+    }
+    funds.push(createBriefFund({
+      name: payment.name,
+      icon: "▣",
+      color: "#3b82f6",
+      type: "required_payment",
+      block: "obligations",
+      priority: criticalityPriority(payment.criticality),
+      monthTarget: payment.amount,
+      target: payment.amount,
+      weight: payment.amount,
+      description: `Обязательный платеж${payment.date ? `, дата: ${payment.date}` : ""}.`
+    }));
+  });
+
+  data.debts.forEach((debt) => {
+    if (!debt.name || (!debt.balance && !debt.monthlyPayment)) {
+      return;
+    }
+    const isDanger = debt.hasOverdue || debt.type === "Кредитная карта";
+    funds.push(createBriefFund({
+      name: debt.name,
+      icon: isDanger ? "!" : "▣",
+      color: isDanger ? "#ff6b7a" : "#3b82f6",
+      type: isDanger ? "danger_debt" : "debt",
+      block: "obligations",
+      priority: isDanger ? 5 : 4,
+      monthTarget: debt.monthlyPayment || 0,
+      target: debt.balance || debt.monthlyPayment || 0,
+      weight: debt.monthlyPayment || debt.balance || 1,
+      description: `${debt.type || "Долг"}${debt.hasOverdue ? " с просрочкой" : ""}.`
+    }));
+  });
+
+  const lifeLabels = {
+    food: ["Еда и быт", "#22c55e", "●"],
+    transport: ["Транспорт", "#14b8a6", "△"],
+    phoneInternet: ["Связь / интернет", "#1f8fff", "◌"],
+    health: ["Здоровье", "#ef4444", "+"],
+    subscriptions: ["Рабочие подписки", "#8b5cf6", "□"],
+    household: ["Бытовые мелочи", "#f59e0b", "◇"]
+  };
+  Object.entries(data.lifeExpenses).forEach(([key, amount]) => {
+    if (!amount) {
+      return;
+    }
+    const [name, color, icon] = lifeLabels[key];
+    funds.push(createBriefFund({
+      name,
+      icon,
+      color,
+      type: "life",
+      block: "life",
+      priority: key === "health" ? 5 : 4,
+      monthTarget: amount,
+      target: amount,
+      weight: amount,
+      description: "Базовая жизнь и рабочая устойчивость."
+    }));
+  });
+
+  data.comfortExpenses.forEach((expense) => {
+    if (!expense.name || !expense.amount) {
+      return;
+    }
+    funds.push(createBriefFund({
+      name: expense.name,
+      icon: "○",
+      color: "#ec4899",
+      type: "comfort",
+      block: "comfort",
+      priority: expense.canReduce ? 3 : 4,
+      monthTarget: expense.amount,
+      target: expense.amount,
+      weight: expense.amount,
+      description: expense.canReduce ? "Комфортный расход, который можно временно уменьшить." : "Комфортный расход, который лучше оставить отдельным лимитом."
+    }));
+  });
+
+  if (data.reserveGoal > data.currentReserve) {
+    funds.push(createBriefFund({
+      name: "Резерв",
+      icon: "◈",
+      color: "#14b8a6",
+      type: "reserve",
+      block: "reserve",
+      priority: 4,
+      balance: data.currentReserve,
+      monthTarget: Math.max(1000, roundMoney((data.reserveGoal - data.currentReserve) * 0.2)),
+      target: data.reserveGoal,
+      weight: data.reserveGoal,
+      description: "Подушка безопасности на непредвиденные ситуации."
+    }));
+  }
+
+  data.goals.forEach((goal) => {
+    if (!goal.name || !goal.amount) {
+      return;
+    }
+    funds.push(createBriefFund({
+      name: goal.name,
+      icon: goal.type === "Бизнес" ? "△" : "◇",
+      color: goal.type === "Бизнес" ? "#22c55e" : "#f59e0b",
+      type: goal.type === "Бизнес" ? "business_goal" : "goal",
+      block: "goals",
+      priority: Number(goal.priority) || 3,
+      monthTarget: Math.max(1000, roundMoney(goal.amount * 0.1)),
+      target: goal.amount,
+      weight: Math.max(1, (Number(goal.priority) || 3) * goal.amount),
+      isFrozen: mode.name === "Антикризисный" && Number(goal.priority) <= 3,
+      description: `${goal.type || "Цель"}${goal.urgency ? `, срочность: ${goal.urgency}` : ""}.`
+    }));
+  });
+
+  if (data.hasBusiness !== "no" && !funds.some((fund) => fund.type === "business_goal")) {
+    funds.push(createBriefFund({
+      name: "Развитие / бизнес",
+      icon: "△",
+      color: "#22c55e",
+      type: "business",
+      block: "goals",
+      priority: 3,
+      monthTarget: 5000,
+      target: 0,
+      weight: 3,
+      isFrozen: mode.name === "Антикризисный",
+      description: data.businessNeedsInvestment === "yes" ? "Регулярные вложения в проект." : "Будущий фонд развития дохода."
+    }));
+  }
+
+  if (!funds.length) {
+    funds.push(...defaultFunds.map((fund) => createBriefFund({
+      ...fund,
+      type: "starter",
+      block: fund.name === "Резерв" ? "reserve" : fund.name === "Личное" ? "comfort" : fund.name === "Обязательные платежи" ? "obligations" : "goals",
+      weight: fund.percent,
+      description: fund.description
+    })));
+  }
+
+  const activeBlocks = funds.reduce((blocks, fund) => {
+    if (!fund.isFrozen) {
+      blocks[fund.block] = true;
+    }
+    return blocks;
+  }, {});
+  const shares = blockSharesFor(mode.name, mode.requiredPercent, activeBlocks);
+  const finalFunds = assignBriefingPercents(funds, shares);
+  const frozenCount = finalFunds.filter((fund) => fund.isFrozen).length;
+  const recommendations = [
+    mode.name === "Антикризисный"
+      ? "Сначала защищаем обязательные платежи и проблемные долги. Цели с приоритетом 1-3 временно поставлены на паузу."
+      : mode.name === "Стабилизация"
+        ? "Держим платежи под контролем, параллельно создаем резерв и оставляем небольшой поток на цели."
+        : "Можно развивать цели и проекты, но резерв остается отдельным обязательным направлением.",
+    "Когда фонд достигнет цели, его процент стоит перекинуть в следующий активный фонд с самым высоким приоритетом.",
+    "Если закрыт долг человеку: 40% освободившегося процента в резерв, 40% в главный долг, 20% в цели или бизнес."
+  ];
+
+  return {
+    data,
+    mode: mode.name,
+    requiredPercent: roundMoney(mode.requiredPercent),
+    shares,
+    frozenCount,
+    recommendations,
+    funds: finalFunds
+  };
+}
+
+function renderBriefingPreview() {
+  const result = buildBriefingResult(collectBriefingData());
+  els.briefingPreview.innerHTML = `
+    <div>
+      <span>Режим</span>
+      <strong>${result.mode}</strong>
+    </div>
+    <div>
+      <span>Обязательства</span>
+      <strong>${result.requiredPercent}% дохода</strong>
+    </div>
+    <div>
+      <span>Будет создано</span>
+      <strong>${result.funds.length} фондов</strong>
+    </div>
+    <div>
+      <span>На паузе</span>
+      <strong>${result.frozenCount}</strong>
+    </div>
+  `;
+}
+
+function renderBriefingSummary() {
+  if (!els.briefingSummary) {
+    return;
+  }
+
+  if (!state.briefing) {
+    els.briefingSummary.innerHTML = `<div class="empty-state">Брифинг еще не пройден. Можно начать с нуля или продолжить ручную настройку фондов.</div>`;
+    return;
+  }
+
+  const result = state.briefing;
+  els.briefingSummary.innerHTML = `
+    <article class="briefing-result">
+      <div>
+        <span>Финансовый режим</span>
+        <strong>${escapeHtml(result.mode)}</strong>
+      </div>
+      <div>
+        <span>Обязательства</span>
+        <strong>${result.requiredPercent}% дохода</strong>
+      </div>
+      <div>
+        <span>Фондов</span>
+        <strong>${state.funds.length}</strong>
+      </div>
+      <div>
+        <span>Заморожено</span>
+        <strong>${state.funds.filter((fund) => fund.isFrozen).length}</strong>
+      </div>
+    </article>
+    <div class="briefing-notes">
+      ${result.recommendations.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}
+    </div>
+  `;
+}
+
+function applyBriefing() {
+  if (!canChangeData()) {
+    return;
+  }
+
+  const result = buildBriefingResult(collectBriefingData());
+  state.funds = result.funds;
+  state.briefing = {
+    completedAt: new Date().toISOString(),
+    mode: result.mode,
+    requiredPercent: result.requiredPercent,
+    shares: result.shares,
+    frozenCount: result.frozenCount,
+    recommendations: result.recommendations,
+    answers: result.data
+  };
+  state.history.push({
+    id: createId(),
+    date: new Date().toISOString(),
+    type: "Брифинг",
+    amount: 0,
+    periodKey: state.currentMonthKey,
+    comment: `Созданы фонды по режиму «${result.mode}»`
+  });
+  els.briefingModal.close();
+  showToast(`Брифинг готов: создано ${result.funds.length} фондов.`);
+  switchScreen("dashboard");
+  render();
+}
+
 function switchScreen(screen) {
   Object.entries(els.screens).forEach(([key, node]) => {
     node.classList.toggle("is-visible", key === screen);
@@ -1242,6 +1833,7 @@ function switchScreen(screen) {
 
   const titles = {
     dashboard: "Мои деньги",
+    briefing: "Брифинг",
     history: "История операций"
   };
   els.screenTitle.textContent = titles[screen];
@@ -1384,6 +1976,45 @@ els.incomeForm.addEventListener("submit", (event) => {
 els.addFundBtn.addEventListener("click", () => openFundModal());
 
 els.addMonthBtn.addEventListener("click", addMonth);
+
+els.openBriefingBtn.addEventListener("click", openBriefing);
+
+els.startBriefingBtn.addEventListener("click", openBriefing);
+
+els.briefingBackBtn.addEventListener("click", () => moveBriefingStep(-1));
+
+els.briefingNextBtn.addEventListener("click", () => moveBriefingStep(1));
+
+els.addRequiredPaymentBtn.addEventListener("click", addRequiredPaymentRow);
+
+els.addDebtBtn.addEventListener("click", addDebtRow);
+
+els.addComfortBtn.addEventListener("click", addComfortRow);
+
+els.addGoalBtn.addEventListener("click", addGoalRow);
+
+els.briefingForm.addEventListener("input", renderBriefingPreview);
+
+els.briefingForm.addEventListener("change", renderBriefingPreview);
+
+els.briefingForm.addEventListener("click", (event) => {
+  const removeButton = event.target.closest("[data-remove-briefing-item]");
+  if (!removeButton) {
+    return;
+  }
+
+  removeButton.closest("[data-briefing-item]")?.remove();
+  renderBriefingPreview();
+});
+
+els.briefingForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (event.submitter?.value === "cancel") {
+    els.briefingModal.close();
+    return;
+  }
+  applyBriefing();
+});
 
 els.resetMenuBtn.addEventListener("click", openResetMenu);
 
