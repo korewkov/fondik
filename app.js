@@ -128,6 +128,7 @@ const els = {
   demoResult: document.querySelector("#demoResult"),
   authCloseBtn: document.querySelector("#authCloseBtn"),
   appShell: document.querySelector("#appShell"),
+  appLoading: document.querySelector("#appLoading"),
   authForm: document.querySelector("#authForm"),
   authEmail: document.querySelector("#authEmail"),
   authPassword: document.querySelector("#authPassword"),
@@ -996,6 +997,7 @@ function renderOverflow() {
 
 function renderAuthState() {
   const isSignedIn = Boolean(session?.user?.id);
+  els.appLoading?.classList.toggle("is-hidden", isSignedIn);
   els.publicShell?.classList.toggle("is-hidden", isSignedIn);
   els.appShell.classList.toggle("is-hidden", !isSignedIn);
   els.authOpenBtn.classList.toggle("is-hidden", isSignedIn);
@@ -1005,6 +1007,19 @@ function renderAuthState() {
   if (isSignedIn && els.authModal.open) {
     els.authModal.close();
   }
+}
+
+function redirectToLogin() {
+  window.location.href = "index.html#login";
+}
+
+function withTimeout(promise, ms, label = "Операция") {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(`${label} выполняется слишком долго.`)), ms);
+    })
+  ]);
 }
 
 function currentRoute() {
@@ -2683,11 +2698,12 @@ async function initApp() {
   session = loadStoredSession();
   if (session) {
     try {
-      await refreshSessionIfNeeded();
-      await bootAuthenticatedApp();
+      await withTimeout(refreshSessionIfNeeded(), 8000, "Восстановление сессии");
+      await withTimeout(bootAuthenticatedApp(), 12000, "Загрузка кабинета");
     } catch {
       if (isPrivateAppPage) {
-        window.location.href = "index.html#login";
+        clearSession();
+        redirectToLogin();
         return;
       }
       storageStatus = "Сессия истекла. Войдите заново.";
@@ -2696,7 +2712,7 @@ async function initApp() {
     }
   } else {
     if (isPrivateAppPage) {
-      window.location.href = "index.html#login";
+      redirectToLogin();
       return;
     }
     storageStatus = "Войдите, чтобы загрузить данные из Supabase.";

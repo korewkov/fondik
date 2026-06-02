@@ -521,6 +521,26 @@ input[type="file"] {
   min-height: 100vh;
 }
 
+.app-loading {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 16px;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+}
+
+.app-loading .brand {
+  justify-content: center;
+}
+
+.app-loading p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .brand {
   display: flex;
   align-items: center;

@@ -6,9 +6,29 @@
   <title>Система денег</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/favicon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260603-5">
+  <link rel="stylesheet" href="style.css?v=20260603-7">
+  <script>
+    window.setTimeout(() => {
+      const appShell = document.querySelector("#appShell");
+      if (!appShell || appShell.classList.contains("is-hidden")) {
+        window.location.replace("index.html#login");
+      }
+    }, 15000);
+  </script>
 </head>
 <body>
+  <div class="app-loading" id="appLoading" role="status">
+    <div class="brand">
+      <img class="brand-logo" src="assets/logo.png" alt="">
+      <div>
+        <strong>Система денег</strong>
+        <span>загрузка кабинета</span>
+      </div>
+    </div>
+    <p>Восстанавливаем сессию и загружаем ваши фонды.</p>
+    <a class="ghost-btn compact" href="index.html#login">Вернуться ко входу</a>
+  </div>
+
   <dialog class="auth-modal" id="authModal">
     <div class="auth-card">
       <button class="icon-btn auth-close" id="authCloseBtn" type="button" aria-label="Закрыть">×</button>
@@ -448,6 +468,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260603-5"></script>
+  <script src="app.js?v=20260603-7"></script>
 </body>
 </html>
