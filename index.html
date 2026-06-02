@@ -6,7 +6,7 @@
   <title>Система денег</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/favicon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260603-2">
+  <link rel="stylesheet" href="style.css?v=20260603-3">
 </head>
 <body>
   <dialog class="auth-modal" id="authModal">
@@ -25,6 +25,7 @@
       <form class="auth-form" id="authForm">
         <input id="authEmail" type="email" autocomplete="email" placeholder="Email" required>
         <input id="authPassword" type="password" autocomplete="current-password" placeholder="Пароль" minlength="6" required>
+        <input id="authLogin" type="text" autocomplete="nickname" placeholder="Логин для регистрации" maxlength="24">
         <div class="auth-actions">
           <button class="primary-btn" id="loginBtn" value="login" type="submit">Войти</button>
           <button class="ghost-btn" id="signupBtn" value="signup" type="submit">Регистрация</button>
@@ -131,39 +132,32 @@
   </div>
 
   <div class="app-shell is-hidden" id="appShell">
-    <aside class="sidebar" aria-label="Основная навигация">
-      <div class="brand">
-        <img class="brand-logo" src="assets/logo.png" alt="">
-        <div>
-          <strong>Система денег</strong>
-          <span>фонды и цели</span>
-        </div>
-      </div>
-
-      <nav class="nav">
-        <button class="nav-btn is-active" data-screen="dashboard">Дашборд</button>
-        <button class="nav-btn" data-screen="history">История</button>
-      </nav>
-
-      <div class="sidebar-card">
-        <span>Сумма процентов</span>
-        <strong id="sidebarPercent">100%</strong>
-        <small id="sidebarPercentHint">Распределение готово</small>
-      </div>
-    </aside>
-
     <main class="main">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">Личная система фондов</p>
-          <h1 id="screenTitle">Мои деньги</h1>
+        <div class="topbar-brand">
+          <div class="brand">
+            <img class="brand-logo" src="assets/logo.png" alt="">
+            <div>
+              <strong>Система денег</strong>
+              <span>фонды и цели</span>
+            </div>
+          </div>
+          <div>
+            <p class="eyebrow">Личная система фондов</p>
+            <h1 id="screenTitle">Мои деньги</h1>
+          </div>
         </div>
+
+        <nav class="nav top-nav" aria-label="Основная навигация">
+          <button class="nav-btn is-active" data-screen="dashboard">Дашборд</button>
+          <button class="nav-btn" data-screen="history">История</button>
+        </nav>
+
         <div class="user-panel">
           <button class="primary-btn compact" id="authOpenBtn" type="button">Войти</button>
-          <div class="user-account is-hidden" id="userAccount">
-            <span id="userEmail"></span>
-            <button class="ghost-btn compact" id="logoutBtn" type="button">Выйти</button>
-          </div>
+          <button class="ghost-btn compact user-account is-hidden" id="userAccountBtn" type="button">
+            <span id="userLogin"></span>
+          </button>
         </div>
       </header>
 
@@ -255,6 +249,32 @@
           </div>
         </div>
         <div class="history-list" id="historyList"></div>
+      </section>
+
+      <section class="screen" id="accountScreen">
+        <div class="account-layout">
+          <article class="account-card">
+            <span>Логин</span>
+            <strong id="accountLogin">-</strong>
+            <p>Он показывается в верхней панели вместо длинной почты.</p>
+          </article>
+          <article class="account-card">
+            <span>Email</span>
+            <strong id="accountEmail">-</strong>
+            <p>Почта используется для входа и восстановления доступа.</p>
+          </article>
+          <form class="account-card account-form" id="accountForm">
+            <label>Изменить логин
+              <input id="accountLoginInput" type="text" maxlength="24" autocomplete="nickname" required>
+            </label>
+            <button class="primary-btn compact" type="submit">Сохранить логин</button>
+          </form>
+          <article class="account-card">
+            <span>Сессия</span>
+            <strong>Активна</strong>
+            <button class="ghost-btn compact danger" id="logoutBtn" type="button">Выйти</button>
+          </article>
+        </div>
       </section>
 
     </main>
@@ -524,6 +544,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260603-2"></script>
+  <script src="app.js?v=20260603-3"></script>
 </body>
 </html>

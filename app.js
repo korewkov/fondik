@@ -130,25 +130,29 @@ const els = {
   authForm: document.querySelector("#authForm"),
   authEmail: document.querySelector("#authEmail"),
   authPassword: document.querySelector("#authPassword"),
+  authLogin: document.querySelector("#authLogin"),
   authMessage: document.querySelector("#authMessage"),
   loginBtn: document.querySelector("#loginBtn"),
   signupBtn: document.querySelector("#signupBtn"),
-  userAccount: document.querySelector("#userAccount"),
-  userEmail: document.querySelector("#userEmail"),
+  userAccountBtn: document.querySelector("#userAccountBtn"),
+  userLogin: document.querySelector("#userLogin"),
   logoutBtn: document.querySelector("#logoutBtn"),
   navButtons: document.querySelectorAll(".nav-btn"),
   screenTitle: document.querySelector("#screenTitle"),
   screens: {
+    account: document.querySelector("#accountScreen"),
     dashboard: document.querySelector("#dashboardScreen"),
     history: document.querySelector("#historyScreen")
   },
+  accountLogin: document.querySelector("#accountLogin"),
+  accountEmail: document.querySelector("#accountEmail"),
+  accountForm: document.querySelector("#accountForm"),
+  accountLoginInput: document.querySelector("#accountLoginInput"),
   incomeForm: document.querySelector("#incomeForm"),
   incomeAmount: document.querySelector("#incomeAmount"),
   incomeComment: document.querySelector("#incomeComment"),
   distributeBtn: document.querySelector("#distributeBtn"),
   percentWarning: document.querySelector("#percentWarning"),
-  sidebarPercent: document.querySelector("#sidebarPercent"),
-  sidebarPercentHint: document.querySelector("#sidebarPercentHint"),
   fundGrid: document.querySelector("#fundGrid"),
   monthSummaryCard: document.querySelector("#monthSummaryCard"),
   showRequiredIncomeBtn: document.querySelector("#showRequiredIncomeBtn"),
@@ -227,6 +231,9 @@ function createDefaultState() {
     history: [],
     months: [],
     briefing: null,
+    profile: {
+      login: defaultUserLogin()
+    },
     currentMonthKey: monthKeyFromDate(new Date()),
     createdAt: new Date().toISOString()
   };
@@ -321,11 +328,36 @@ function normalizeState(value) {
     history: Array.isArray(value?.history) ? value.history : [],
     months: Array.isArray(value?.months) ? value.months.map(normalizeMonth).filter(Boolean) : [],
     briefing: value?.briefing || null,
+    profile: normalizeProfile(value?.profile),
     currentMonthKey: value?.currentMonthKey || monthKeyFromDate(new Date()),
     createdAt: value?.createdAt || new Date().toISOString()
   };
 
   return ensureCurrentCalendarMonth(nextState);
+}
+
+function normalizeProfile(profile) {
+  return {
+    login: normalizeLogin(profile?.login) || defaultUserLogin()
+  };
+}
+
+function defaultUserLogin() {
+  return normalizeLogin(session?.user?.user_metadata?.login)
+    || normalizeLogin(session?.user?.email?.split("@")[0])
+    || "Пользователь";
+}
+
+function normalizeLogin(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^\p{L}\p{N}._-]/gu, "")
+    .slice(0, 24);
+}
+
+function currentUserLogin() {
+  return normalizeLogin(state.profile?.login) || defaultUserLogin();
 }
 
 function normalizeMonth(month) {
@@ -699,16 +731,44 @@ async function signIn(email, password) {
   showToast("Вы вошли в систему.");
 }
 
-async function signUp(email, password) {
-  const result = await authRequest("/signup", { email, password });
+async function signUp(email, password, login = "") {
+  const safeLogin = normalizeLogin(login) || normalizeLogin(email.split("@")[0]);
+  const result = await authRequest("/signup", {
+    email,
+    password,
+    data: {
+      login: safeLogin
+    }
+  });
   if (result?.access_token) {
     saveSession(result);
     await bootAuthenticatedApp();
+    updateProfileLogin(safeLogin, { silent: true });
     showToast("Аккаунт создан.");
     return;
   }
 
   els.authMessage.textContent = "Аккаунт создан. Проверьте почту и подтвердите регистрацию, затем войдите.";
+}
+
+function updateProfileLogin(login, options = {}) {
+  const safeLogin = normalizeLogin(login);
+  if (!safeLogin) {
+    showToast("Введите логин.");
+    return false;
+  }
+
+  state.profile = {
+    ...(state.profile || {}),
+    login: safeLogin
+  };
+  saveState();
+  renderAuthState();
+  renderAccount();
+  if (!options.silent) {
+    showToast("Логин сохранен.");
+  }
+  return true;
 }
 
 function isSupabaseConfigured() {
@@ -814,12 +874,11 @@ function render() {
   const percent = totalPercent();
   const valid = isDistributionValid();
 
-  els.sidebarPercent.textContent = `${percent}%`;
-  els.sidebarPercentHint.textContent = valid ? "Распределение готово" : "Нужно ровно 100%";
   els.distributeBtn.disabled = !valid || !isStorageReady;
   els.percentWarning.textContent = getWarningText(percent, valid);
   els.currentMonthLabel.textContent = monthLabel(state.currentMonthKey);
 
+  renderAccount();
   renderMonthSummary();
   renderRequiredIncome();
   renderOverflow();
@@ -829,6 +888,14 @@ function render() {
   renderHistory();
   saveState();
   maybeOfferBriefing();
+}
+
+function renderAccount() {
+  const login = currentUserLogin();
+  els.userLogin.textContent = login;
+  els.accountLogin.textContent = login;
+  els.accountEmail.textContent = session?.user?.email || "-";
+  els.accountLoginInput.value = login;
 }
 
 function renderMonthSummary() {
@@ -931,8 +998,8 @@ function renderAuthState() {
   els.publicShell.classList.toggle("is-hidden", isSignedIn);
   els.appShell.classList.toggle("is-hidden", !isSignedIn);
   els.authOpenBtn.classList.toggle("is-hidden", isSignedIn);
-  els.userAccount.classList.toggle("is-hidden", !isSignedIn);
-  els.userEmail.textContent = session?.user?.email || "";
+  els.userAccountBtn.classList.toggle("is-hidden", !isSignedIn);
+  els.userLogin.textContent = currentUserLogin();
 
   if (isSignedIn && els.authModal.open) {
     els.authModal.close();
@@ -949,6 +1016,9 @@ function routeToHash(screen) {
 
 function screenFromRoute(route = currentRoute()) {
   const normalized = route.split("?")[0];
+  if (["account", "cabinet"].includes(normalized)) {
+    return "account";
+  }
   if (["dashboard", "history"].includes(normalized)) {
     return normalized;
   }
@@ -957,7 +1027,7 @@ function screenFromRoute(route = currentRoute()) {
 
 function isPrivateRoute(route = currentRoute()) {
   const normalized = route.split("?")[0];
-  return ["dashboard", "history"].includes(normalized);
+  return ["account", "cabinet", "dashboard", "history"].includes(normalized);
 }
 
 function applyRoute() {
@@ -2269,6 +2339,7 @@ function switchScreen(screen, options = {}) {
   });
 
   const titles = {
+    account: "Кабинет",
     dashboard: "Мои деньги",
     history: "История операций"
   };
@@ -2333,6 +2404,8 @@ function openAuthModal() {
 
 els.authOpenBtn.addEventListener("click", openAuthModal);
 
+els.userAccountBtn.addEventListener("click", () => switchScreen("account"));
+
 els.authTriggerButtons.forEach((button) => {
   button.addEventListener("click", openAuthModal);
 });
@@ -2375,6 +2448,7 @@ els.authForm.addEventListener("submit", async (event) => {
   els.authMessage.textContent = "";
   const email = els.authEmail.value.trim();
   const password = els.authPassword.value;
+  const login = els.authLogin.value.trim();
   const action = event.submitter?.value || "login";
 
   els.loginBtn.disabled = true;
@@ -2382,7 +2456,7 @@ els.authForm.addEventListener("submit", async (event) => {
 
   try {
     if (action === "signup") {
-      await signUp(email, password);
+      await signUp(email, password, login);
     } else {
       await signIn(email, password);
     }
@@ -2410,6 +2484,11 @@ els.logoutBtn.addEventListener("click", async () => {
   storageStatus = "Войдите, чтобы загрузить данные из Supabase.";
   renderAuthState();
   render();
+});
+
+els.accountForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  updateProfileLogin(els.accountLoginInput.value);
 });
 
 els.incomeForm.addEventListener("submit", (event) => {
