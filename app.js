@@ -685,6 +685,18 @@ function demoPercentTotal() {
   return roundMoney(demoFunds.reduce((sum, fund) => sum + Number(fund.percent || 0), 0));
 }
 
+function demoScaleSegments() {
+  const percentTotal = demoPercentTotal();
+  if (!percentTotal) {
+    return "";
+  }
+
+  return demoFunds.map((fund) => {
+    const width = roundMoney(fund.percent / percentTotal * 100);
+    return `<span style="--segment-color: ${fund.color}; --segment-width: ${width}%" title="${escapeHtml(fund.name)} · ${fund.percent}%"></span>`;
+  }).join("");
+}
+
 function renderDemo(amount = demoAmountValue()) {
   const safeAmount = Math.max(0, roundMoney(amount));
   const percentTotal = demoPercentTotal();
@@ -711,6 +723,15 @@ function renderDemo(amount = demoAmountValue()) {
         <strong data-demo-allocation="${fund.id}">${money(fund.allocation)}</strong>
       </div>
     `).join("")}
+    <div class="demo-scale" aria-label="Шкала распределения демо-фондов">
+      <div class="demo-scale-head">
+        <span>Шкала заполнения</span>
+        <strong id="demoScaleValue">${Math.min(percentTotal, 100)}%</strong>
+      </div>
+      <div class="demo-scale-track" style="--scale-progress: ${Math.min(percentTotal, 100)}%">
+        <div class="demo-scale-fill" id="demoScaleFill">${demoScaleSegments()}</div>
+      </div>
+    </div>
   `;
 }
 
@@ -719,6 +740,9 @@ function updateDemoAllocations() {
   const percentTotal = demoPercentTotal();
   const totalNode = document.querySelector("#demoTotalAmount");
   const statusNode = document.querySelector("#demoPercentStatus");
+  const scaleNode = document.querySelector("#demoScaleValue");
+  const scaleFillNode = document.querySelector("#demoScaleFill");
+  const scaleTrackNode = document.querySelector(".demo-scale-track");
 
   if (totalNode) {
     totalNode.textContent = money(safeAmount);
@@ -727,6 +751,18 @@ function updateDemoAllocations() {
   if (statusNode) {
     statusNode.textContent = `${percentTotal}% распределения`;
     statusNode.classList.toggle("is-warning", percentTotal !== 100);
+  }
+
+  if (scaleNode) {
+    scaleNode.textContent = `${Math.min(percentTotal, 100)}%`;
+  }
+
+  if (scaleTrackNode) {
+    scaleTrackNode.style.setProperty("--scale-progress", `${Math.min(percentTotal, 100)}%`);
+  }
+
+  if (scaleFillNode) {
+    scaleFillNode.innerHTML = demoScaleSegments();
   }
 
   demoFunds.forEach((fund) => {
