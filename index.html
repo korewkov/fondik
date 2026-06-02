@@ -6,7 +6,7 @@
   <title>Система денег</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/favicon-192.png">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260602-2">
 </head>
 <body>
   <dialog class="auth-modal" id="authModal">
@@ -85,27 +85,30 @@
           <div class="warning" id="percentWarning" role="alert"></div>
         </div>
 
-        <div class="stats-grid" id="statsGrid"></div>
-
         <div class="dashboard-layout">
           <section class="funds-section">
             <div class="section-heading">
               <div>
                 <h2>Фонды</h2>
-                <span id="fundCount"></span>
+                <span><span id="fundCount"></span> · <span id="currentMonthLabel">текущий месяц</span></span>
               </div>
               <div class="section-actions">
                 <div class="confirm-wrap" id="resetConfirmWrap">
-                  <button class="ghost-btn compact danger" id="resetMonthBtn" type="button" aria-expanded="false">Сбросить месяц</button>
+                  <button class="ghost-btn compact danger" id="resetMenuBtn" type="button" aria-expanded="false">Сбросить</button>
+                  <div class="reset-menu is-hidden" id="resetMenu">
+                    <button type="button" id="resetMonthOption">Сбросить месяц</button>
+                    <button type="button" id="resetAllOption">Сбросить все</button>
+                  </div>
                   <div class="inline-confirm is-hidden" id="resetConfirm" role="status">
-                    <strong>Сбросить месяц?</strong>
-                    <span>Фонды и общие балансы сохранятся.</span>
+                    <strong id="resetConfirmTitle">Сбросить?</strong>
+                    <span id="resetConfirmText">Действие нужно подтвердить.</span>
                     <div class="inline-confirm-actions">
                       <button class="ghost-btn compact" id="cancelResetBtn" type="button">Отмена</button>
-                      <button class="primary-btn compact danger-fill" id="confirmResetBtn" type="button">Да, сбросить</button>
+                      <button class="primary-btn compact danger-fill" id="confirmResetBtn" type="button">Подтвердить</button>
                     </div>
                   </div>
                 </div>
+                <button class="ghost-btn compact" id="addMonthBtn" type="button">Новый месяц</button>
                 <button class="primary-btn compact" id="addFundBtn" type="button">Новый фонд</button>
               </div>
             </div>
@@ -130,6 +133,14 @@
       </section>
 
       <section class="screen" id="historyScreen">
+        <div class="section-heading wide">
+          <div>
+            <p class="eyebrow">Динамика</p>
+            <h2>Месяцы</h2>
+          </div>
+        </div>
+        <div class="month-list" id="monthList"></div>
+
         <div class="section-heading wide">
           <div>
             <p class="eyebrow">Журнал операций</p>
@@ -196,6 +207,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260602-2"></script>
 </body>
 </html>

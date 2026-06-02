@@ -5,151 +5,76 @@ const SUPABASE_CONFIG = {
   table: "finance_user_state"
 };
 
-const AUTH_STORAGE_KEY = "moneySystem.authSession.v1";
+const LEGACY_STATE_CONFIG = {
+  table: "finance_app_state",
+  id: "personal-finance"
+};
 
 const defaultFunds = [
   {
     id: createId(),
-    name: "Кредит за первоначальный взнос",
-    icon: "🏦",
-    color: "#52d6ff",
+    name: "Обязательные платежи",
+    icon: "▣",
+    color: "#3b82f6",
     balance: 0,
     monthBalance: 0,
-    monthTarget: 15000,
-    target: 300000,
-    percent: 5,
+    monthTarget: 30000,
+    target: 0,
+    percent: 30,
     priority: 1,
-    description: "Фонд для ускоренного закрытия крупной цели."
+    description: "Регулярные платежи, долги и важные обязательства."
   },
   {
     id: createId(),
-    name: "Кредит",
-    icon: "📄",
-    color: "#ffd166",
+    name: "Резерв",
+    icon: "◈",
+    color: "#14b8a6",
     balance: 0,
     monthBalance: 0,
-    monthTarget: 12000,
-    target: 120000,
-    percent: 18,
-    priority: 2,
-    description: "Регулярное погашение основного кредита."
-  },
-  {
-    id: createId(),
-    name: "Кредитка №1",
-    icon: "💳",
-    color: "#ff8177",
-    balance: 0,
-    monthBalance: 0,
-    monthTarget: 6000,
-    target: 80000,
-    percent: 6,
-    priority: 3,
-    description: "Плановое закрытие задолженности по первой карте."
-  },
-  {
-    id: createId(),
-    name: "Кредитка №2",
-    icon: "💳",
-    color: "#ff6b6b",
-    balance: 0,
-    monthBalance: 0,
-    monthTarget: 15000,
-    target: 100000,
-    percent: 24,
-    priority: 4,
-    description: "Самый высокий приоритет среди кредитных карт."
-  },
-  {
-    id: createId(),
-    name: "Долг другу",
-    icon: "🤝",
-    color: "#a78bfa",
-    balance: 0,
-    monthBalance: 0,
-    monthTarget: 8000,
-    target: 40000,
-    percent: 5,
-    priority: 5,
-    description: "Личный долг с отдельным контролем прогресса."
-  },
-  {
-    id: createId(),
-    name: "Бизнес",
-    icon: "🚀",
-    color: "#37d399",
-    balance: 0,
-    monthBalance: 0,
-    monthTarget: 10000,
+    monthTarget: 20000,
     target: 150000,
-    percent: 15,
-    priority: 6,
-    description: "Деньги на развитие, тесты и закупки."
+    percent: 20,
+    priority: 2,
+    description: "Подушка безопасности и деньги на непредвиденное."
   },
   {
     id: createId(),
-    name: "3D-принтер",
-    icon: "🧊",
-    color: "#4cc9f0",
-    balance: 12000,
-    monthBalance: 0,
-    monthTarget: 5000,
-    target: 35000,
-    percent: 5,
-    priority: 7,
-    description: "Накопление на покупку оборудования."
-  },
-  {
-    id: createId(),
-    name: "Ремонт квартиры",
-    icon: "🛠",
+    name: "Крупные цели",
+    icon: "◇",
     color: "#f59e0b",
     balance: 0,
     monthBalance: 0,
-    monthTarget: 7000,
+    monthTarget: 25000,
     target: 250000,
-    percent: 4,
-    priority: 8,
-    description: "Материалы, работы и небольшие улучшения."
+    percent: 25,
+    priority: 3,
+    description: "Накопления на покупки, ремонт, поездки или проекты."
   },
   {
     id: createId(),
-    name: "Резервный фонд",
-    icon: "🛡",
-    color: "#2dd4bf",
+    name: "Развитие",
+    icon: "△",
+    color: "#22c55e",
+    balance: 0,
+    monthBalance: 0,
+    monthTarget: 15000,
+    target: 0,
+    percent: 15,
+    priority: 4,
+    description: "Обучение, инструменты, бизнес и рост дохода."
+  },
+  {
+    id: createId(),
+    name: "Личное",
+    icon: "○",
+    color: "#ec4899",
     balance: 0,
     monthBalance: 0,
     monthTarget: 10000,
-    target: 180000,
+    target: 0,
     percent: 10,
-    priority: 9,
-    description: "Подушка безопасности на несколько месяцев."
-  },
-  {
-    id: createId(),
-    name: "Комфорт",
-    icon: "☕",
-    color: "#f472b6",
-    balance: 0,
-    monthBalance: 0,
-    monthTarget: 5000,
-    target: 30000,
-    percent: 5,
-    priority: 10,
-    description: "Личные радости без чувства вины."
-  },
-  {
-    id: createId(),
-    name: "Газировки и напитки",
-    icon: "🥤",
-    color: "#84cc16",
-    balance: 0,
-    monthBalance: 0,
-    monthTarget: 2000,
-    target: 8000,
-    percent: 3,
-    priority: 11,
-    description: "Маленький фонд для напитков и перекусов."
+    priority: 5,
+    description: "Повседневные желания и небольшие радости."
   }
 ];
 
@@ -158,7 +83,8 @@ let storageStatus = "Подключение к Supabase еще не настро
 let isStorageReady = false;
 let isBooted = false;
 let saveTimer;
-let session = loadSavedSession();
+let session = null;
+let pendingResetAction = null;
 
 const els = {
   authModal: document.querySelector("#authModal"),
@@ -187,7 +113,6 @@ const els = {
   percentWarning: document.querySelector("#percentWarning"),
   sidebarPercent: document.querySelector("#sidebarPercent"),
   sidebarPercentHint: document.querySelector("#sidebarPercentHint"),
-  statsGrid: document.querySelector("#statsGrid"),
   fundGrid: document.querySelector("#fundGrid"),
   fundCount: document.querySelector("#fundCount"),
   donutChart: document.querySelector("#donutChart"),
@@ -195,6 +120,7 @@ const els = {
   distributionLabel: document.querySelector("#distributionLabel"),
   distributionLegend: document.querySelector("#distributionLegend"),
   addFundBtn: document.querySelector("#addFundBtn"),
+  addMonthBtn: document.querySelector("#addMonthBtn"),
   fundModal: document.querySelector("#fundModal"),
   fundForm: document.querySelector("#fundForm"),
   fundModalTitle: document.querySelector("#fundModalTitle"),
@@ -210,11 +136,18 @@ const els = {
   fundDescription: document.querySelector("#fundDescription"),
   historyList: document.querySelector("#historyList"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
-  resetMonthBtn: document.querySelector("#resetMonthBtn"),
+  resetMenuBtn: document.querySelector("#resetMenuBtn"),
   resetConfirmWrap: document.querySelector("#resetConfirmWrap"),
+  resetMenu: document.querySelector("#resetMenu"),
+  resetMonthOption: document.querySelector("#resetMonthOption"),
+  resetAllOption: document.querySelector("#resetAllOption"),
   resetConfirm: document.querySelector("#resetConfirm"),
+  resetConfirmTitle: document.querySelector("#resetConfirmTitle"),
+  resetConfirmText: document.querySelector("#resetConfirmText"),
   cancelResetBtn: document.querySelector("#cancelResetBtn"),
   confirmResetBtn: document.querySelector("#confirmResetBtn"),
+  currentMonthLabel: document.querySelector("#currentMonthLabel"),
+  monthList: document.querySelector("#monthList"),
   fundDetailModal: document.querySelector("#fundDetailModal"),
   fundDetailContent: document.querySelector("#fundDetailContent"),
   toast: document.querySelector("#toast")
@@ -224,6 +157,8 @@ function createDefaultState() {
   return {
     funds: defaultFunds.map((fund) => ({ ...fund })),
     history: [],
+    months: [],
+    currentMonthKey: monthKeyFromDate(new Date()),
     createdAt: new Date().toISOString()
   };
 }
@@ -241,16 +176,31 @@ async function loadState() {
     const rows = await supabaseRequest("GET", `/${SUPABASE_CONFIG.table}?user_id=eq.${encodeURIComponent(userId)}&select=data&limit=1`);
 
     if (!rows.length) {
-      const initialState = createDefaultState();
+      const legacyState = await loadLegacyState();
+      const initialState = legacyState || createDefaultState();
       await persistState(initialState);
-      storageStatus = "Supabase подключен. Создана первая запись состояния.";
+      storageStatus = legacyState
+        ? "Supabase подключен. Старые данные перенесены в ваш аккаунт."
+        : "Supabase подключен. Создана первая запись состояния.";
       isStorageReady = true;
       return initialState;
     }
 
+    const savedState = normalizeState(rows[0].data);
+    if (isOldExampleState(savedState)) {
+      const legacyState = await loadLegacyState();
+      const replacementState = legacyState || createDefaultState();
+      await persistState(replacementState);
+      storageStatus = legacyState
+        ? "Supabase подключен. Старые данные перенесены в ваш аккаунт."
+        : "Supabase подключен. Примеры фондов обновлены.";
+      isStorageReady = true;
+      return replacementState;
+    }
+
     storageStatus = "Supabase подключен. Данные загружены из базы.";
     isStorageReady = true;
-    return normalizeState(rows[0].data);
+    return savedState;
   } catch (error) {
     storageStatus = `Ошибка Supabase: ${error.message}`;
     isStorageReady = false;
@@ -259,11 +209,68 @@ async function loadState() {
   }
 }
 
+async function loadLegacyState() {
+  try {
+    const path = `/${LEGACY_STATE_CONFIG.table}?id=eq.${encodeURIComponent(LEGACY_STATE_CONFIG.id)}&select=data&limit=1`;
+    const rows = await supabaseAnonRequest("GET", path);
+    if (!Array.isArray(rows) || !rows.length) {
+      return null;
+    }
+
+    const legacyState = normalizeState(rows[0].data);
+    return isOldExampleState(legacyState) ? null : legacyState;
+  } catch {
+    return null;
+  }
+}
+
+function isOldExampleState(value) {
+  const oldExampleNames = new Set([
+    "Кредит за первоначальный взнос",
+    "Кредит",
+    "Кредитка №1",
+    "Кредитка №2",
+    "Долг другу",
+    "Бизнес",
+    "3D-принтер",
+    "Ремонт квартиры",
+    "Резервный фонд",
+    "Комфорт",
+    "Газировки и напитки"
+  ]);
+  const funds = Array.isArray(value?.funds) ? value.funds : [];
+  const history = Array.isArray(value?.history) ? value.history : [];
+
+  return funds.length === oldExampleNames.size
+    && history.length === 0
+    && funds.every((fund) => oldExampleNames.has(fund.name));
+}
+
 function normalizeState(value) {
-  return {
+  const nextState = {
     funds: Array.isArray(value?.funds) ? value.funds.map(normalizeFund) : defaultFunds.map((fund) => ({ ...fund })),
     history: Array.isArray(value?.history) ? value.history : [],
+    months: Array.isArray(value?.months) ? value.months.map(normalizeMonth).filter(Boolean) : [],
+    currentMonthKey: value?.currentMonthKey || monthKeyFromDate(new Date()),
     createdAt: value?.createdAt || new Date().toISOString()
+  };
+
+  return ensureCurrentCalendarMonth(nextState);
+}
+
+function normalizeMonth(month) {
+  if (!month?.key) {
+    return null;
+  }
+
+  return {
+    key: month.key,
+    label: month.label || monthLabel(month.key),
+    total: Number(month.total) || 0,
+    target: Number(month.target) || 0,
+    progress: Number(month.progress) || 0,
+    funds: Array.isArray(month.funds) ? month.funds : [],
+    closedAt: month.closedAt || null
   };
 }
 
@@ -299,6 +306,101 @@ function suggestMonthTarget(fund) {
   }
 
   return Math.max(1000, roundMoney(percent * 1000));
+}
+
+function monthKeyFromDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function monthLabel(key) {
+  const [year, month] = String(key).split("-").map(Number);
+  if (!year || !month) {
+    return "Месяц";
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    month: "long",
+    year: "numeric"
+  }).format(new Date(year, month - 1, 1));
+}
+
+function nextMonthKey(key) {
+  const [year, month] = String(key).split("-").map(Number);
+  const date = new Date(year || new Date().getFullYear(), month || new Date().getMonth(), 1);
+  return monthKeyFromDate(date);
+}
+
+function ensureCurrentCalendarMonth(nextState) {
+  const calendarKey = monthKeyFromDate(new Date());
+  if (!nextState.currentMonthKey) {
+    nextState.currentMonthKey = calendarKey;
+  }
+
+  if (nextState.currentMonthKey !== calendarKey && monthKeyIsBefore(nextState.currentMonthKey, calendarKey)) {
+    archiveMonth(nextState, "auto");
+    nextState.currentMonthKey = calendarKey;
+    nextState.funds = nextState.funds.map((fund) => ({ ...fund, monthBalance: 0 }));
+  }
+
+  return nextState;
+}
+
+function monthKeyIsBefore(left, right) {
+  return String(left).localeCompare(String(right)) < 0;
+}
+
+function monthSnapshot(nextState, key = nextState.currentMonthKey) {
+  const funds = nextState.funds.map((fund) => ({
+    fundId: fund.id,
+    fundName: fund.name,
+    amount: roundMoney(fund.monthBalance || 0),
+    target: roundMoney(fund.monthTarget || 0),
+    percent: roundMoney(fund.percent || 0)
+  }));
+  const total = roundMoney(funds.reduce((sum, fund) => sum + fund.amount, 0));
+  const target = roundMoney(funds.reduce((sum, fund) => sum + fund.target, 0));
+
+  return {
+    key,
+    label: monthLabel(key),
+    total,
+    target,
+    progress: target ? Math.min(100, Math.round(total / target * 100)) : 0,
+    funds,
+    closedAt: new Date().toISOString()
+  };
+}
+
+function archiveMonth(nextState, reason = "manual") {
+  const snapshot = monthSnapshot(nextState);
+  const index = nextState.months.findIndex((month) => month.key === snapshot.key);
+  if (index >= 0) {
+    nextState.months[index] = snapshot;
+  } else {
+    nextState.months.push(snapshot);
+  }
+
+  nextState.history.push({
+    id: createId(),
+    date: new Date().toISOString(),
+    type: reason === "auto" ? "Новый месяц" : "Сброс месяца",
+    amount: snapshot.total,
+    periodKey: snapshot.key,
+    comment: reason === "auto"
+      ? `Автоматически закрыт месяц ${snapshot.label}`
+      : `Закрыт месяц ${snapshot.label}`
+  });
+
+  return snapshot;
+}
+
+function currentMonthSnapshot() {
+  return {
+    ...monthSnapshot(state),
+    closedAt: null
+  };
 }
 
 function saveState() {
@@ -353,6 +455,31 @@ async function supabaseRequest(method, path, body, prefer = "return=representati
   return text ? JSON.parse(text) : null;
 }
 
+async function supabaseAnonRequest(method, path, body, prefer = "return=representation") {
+  const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1${path}`, {
+    method,
+    headers: {
+      apikey: SUPABASE_CONFIG.apiKey,
+      Authorization: `Bearer ${SUPABASE_CONFIG.apiKey}`,
+      "Content-Type": "application/json",
+      Prefer: prefer
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `HTTP ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
 async function authRequest(path, body, token = null) {
   const response = await fetch(`${SUPABASE_CONFIG.url}/auth/v1${path}`, {
     method: "POST",
@@ -374,15 +501,6 @@ async function authRequest(path, body, token = null) {
   return data;
 }
 
-function loadSavedSession() {
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    return raw ? normalizeSession(JSON.parse(raw)) : null;
-  } catch {
-    return null;
-  }
-}
-
 function normalizeSession(value) {
   if (!value?.access_token || !value?.refresh_token || !value?.user?.id) {
     return null;
@@ -398,14 +516,10 @@ function normalizeSession(value) {
 
 function saveSession(nextSession) {
   session = normalizeSession(nextSession);
-  if (session) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-  }
 }
 
 function clearSession() {
   session = null;
-  localStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
 async function refreshSessionIfNeeded() {
@@ -535,10 +649,11 @@ function render() {
   els.sidebarPercentHint.textContent = valid ? "Распределение готово" : "Нужно ровно 100%";
   els.distributeBtn.disabled = !valid || !isStorageReady;
   els.percentWarning.textContent = getWarningText(percent, valid);
+  els.currentMonthLabel.textContent = monthLabel(state.currentMonthKey);
 
-  renderStats();
   renderFunds();
   renderDistribution();
+  renderMonthList();
   renderHistory();
   saveState();
 }
@@ -552,33 +667,6 @@ function renderAuthState() {
   if (isSignedIn && els.authModal.open) {
     els.authModal.close();
   }
-}
-
-function renderStats() {
-  const capital = state.funds.reduce((sum, fund) => sum + fund.balance, 0);
-  const monthTotal = state.funds.reduce((sum, fund) => sum + (fund.monthBalance || 0), 0);
-  const monthTarget = state.funds.reduce((sum, fund) => sum + (fund.monthTarget || 0), 0);
-  const monthLeft = Math.max(0, monthTarget - monthTotal);
-  const business = state.funds.find((fund) => /бизнес/i.test(fund.name))?.monthBalance || 0;
-  const reserve = state.funds.find((fund) => /резерв/i.test(fund.name))?.monthBalance || 0;
-  const monthProgress = monthTarget ? `${Math.min(100, Math.round(monthTotal / monthTarget * 100))}%` : "0%";
-
-  const stats = [
-    ["Общий капитал", money(capital), "#37d399"],
-    ["За месяц", money(monthTotal), "#4cc9f0"],
-    ["Цель месяца", money(monthTarget), "#52d6ff"],
-    ["Осталось в месяце", money(monthLeft), "#ff6b6b"],
-    ["Прогресс месяца", monthProgress, "#37d399"],
-    ["Бизнес за месяц", money(business), "#ffd166"],
-    ["Резерв за месяц", money(reserve), "#2dd4bf"]
-  ];
-
-  els.statsGrid.innerHTML = stats.map(([label, value, color]) => `
-    <article class="stat-card" style="--accent: ${color}">
-      <span>${label}</span>
-      <strong>${value}</strong>
-    </article>
-  `).join("");
 }
 
 function renderFunds() {
@@ -662,11 +750,47 @@ function renderHistory() {
         </div>
         <div>
           <strong>${escapeHtml(item.comment || "Без комментария")}</strong>
-          ${item.allocations ? `<div class="history-meta">${item.allocations.length} начислений по фондам</div>` : ""}
+          ${item.allocations ? `<div class="history-meta">${item.allocations.length} начислений по фондам · ${escapeHtml(monthLabel(item.periodKey || state.currentMonthKey))}</div>` : ""}
         </div>
         <div class="history-amount">${money(item.amount)}</div>
       </article>
     `).join("");
+}
+
+function renderMonthList() {
+  const current = currentMonthSnapshot();
+  const months = [
+    { ...current, isCurrent: true },
+    ...state.months
+      .filter((month) => month.key !== current.key)
+      .sort((a, b) => b.key.localeCompare(a.key))
+  ];
+
+  if (!months.length) {
+    els.monthList.innerHTML = `<div class="empty-state">Месяцы появятся после первых пополнений.</div>`;
+    return;
+  }
+
+  els.monthList.innerHTML = months.map((month) => `
+    <article class="month-card ${month.isCurrent ? "is-current" : ""}">
+      <div>
+        <span class="history-meta">${month.isCurrent ? "Текущий месяц" : "Закрытый месяц"}</span>
+        <strong>${escapeHtml(month.label)}</strong>
+      </div>
+      <div>
+        <span>Пополнено</span>
+        <strong>${money(month.total)}</strong>
+      </div>
+      <div>
+        <span>Цель</span>
+        <strong>${money(month.target)}</strong>
+      </div>
+      <div>
+        <span>Прогресс</span>
+        <strong>${month.progress}%</strong>
+      </div>
+    </article>
+  `).join("");
 }
 
 function getWarningText(percent, valid) {
@@ -712,6 +836,7 @@ function distributeIncome(amount, comment) {
     date: new Date().toISOString(),
     type: "Доход",
     amount,
+    periodKey: state.currentMonthKey,
     comment: comment || "Распределено автоматически",
     allocations
   });
@@ -789,6 +914,7 @@ function deleteFund(id) {
     date: new Date().toISOString(),
     type: "Система",
     amount: 0,
+    periodKey: state.currentMonthKey,
     comment: `Удален фонд «${fund.name}»`
   });
   showToast("Фонд удален.");
@@ -877,30 +1003,76 @@ function resetMonth() {
   }
 
   closeResetConfirm();
+  archiveMonth(state);
   state.funds = state.funds.map((fund) => ({ ...fund, monthBalance: 0 }));
-  state.history.push({
-    id: createId(),
-    date: new Date().toISOString(),
-    type: "Сброс месяца",
-    amount: 0,
-    comment: "Месячные накопления обнулены"
-  });
   showToast("Месяц сброшен.");
   render();
 }
 
-function openResetConfirm() {
+function resetAll() {
   if (!canChangeData()) {
     return;
   }
 
+  closeResetConfirm();
+  state = createDefaultState();
+  showToast("Все данные сброшены.");
+  render();
+}
+
+function addMonth() {
+  if (!canChangeData()) {
+    return;
+  }
+
+  const closedMonth = archiveMonth(state);
+  state.currentMonthKey = nextMonthKey(state.currentMonthKey);
+  state.funds = state.funds.map((fund) => ({ ...fund, monthBalance: 0 }));
+  showToast(`Месяц ${closedMonth.label} сохранен. Открыт ${monthLabel(state.currentMonthKey)}.`);
+  render();
+}
+
+function openResetMenu() {
+  closeResetConfirm();
+  els.resetMenu.classList.toggle("is-hidden");
+  els.resetMenuBtn.setAttribute("aria-expanded", String(!els.resetMenu.classList.contains("is-hidden")));
+}
+
+function closeResetMenu() {
+  els.resetMenu.classList.add("is-hidden");
+  els.resetMenuBtn.setAttribute("aria-expanded", "false");
+}
+
+function openResetConfirm(action) {
+  if (!canChangeData()) {
+    return;
+  }
+
+  pendingResetAction = action;
+  closeResetMenu();
+  const isAll = action === "all";
+  els.resetConfirmTitle.textContent = isAll ? "Сбросить все?" : "Сбросить месяц?";
+  els.resetConfirmText.textContent = isAll
+    ? "Будут удалены фонды, история и месяцы. Останутся только стартовые фонды."
+    : "Текущий месяц сохранится в динамике, затем месячные суммы обнулятся.";
+  els.confirmResetBtn.textContent = isAll ? "Да, сбросить все" : "Да, сбросить месяц";
   els.resetConfirm.classList.remove("is-hidden");
-  els.resetMonthBtn.setAttribute("aria-expanded", "true");
 }
 
 function closeResetConfirm() {
   els.resetConfirm.classList.add("is-hidden");
-  els.resetMonthBtn.setAttribute("aria-expanded", "false");
+  pendingResetAction = null;
+}
+
+function confirmPendingReset() {
+  if (pendingResetAction === "all") {
+    resetAll();
+    return;
+  }
+
+  if (pendingResetAction === "month") {
+    resetMonth();
+  }
 }
 
 function switchScreen(screen) {
@@ -1024,14 +1196,28 @@ els.incomeForm.addEventListener("submit", (event) => {
 
 els.addFundBtn.addEventListener("click", () => openFundModal());
 
-els.resetMonthBtn.addEventListener("click", openResetConfirm);
+els.addMonthBtn.addEventListener("click", addMonth);
+
+els.resetMenuBtn.addEventListener("click", openResetMenu);
+
+els.resetMonthOption.addEventListener("click", () => openResetConfirm("month"));
+
+els.resetAllOption.addEventListener("click", () => openResetConfirm("all"));
 
 els.cancelResetBtn.addEventListener("click", closeResetConfirm);
 
-els.confirmResetBtn.addEventListener("click", resetMonth);
+els.confirmResetBtn.addEventListener("click", confirmPendingReset);
 
 document.addEventListener("click", (event) => {
-  if (!els.resetConfirm.classList.contains("is-hidden") && !els.resetConfirmWrap.contains(event.target)) {
+  if (els.resetConfirmWrap.contains(event.target)) {
+    return;
+  }
+
+  if (!els.resetMenu.classList.contains("is-hidden")) {
+    closeResetMenu();
+  }
+
+  if (!els.resetConfirm.classList.contains("is-hidden")) {
     closeResetConfirm();
   }
 });
