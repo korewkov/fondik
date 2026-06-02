@@ -889,6 +889,137 @@ h2 {
   background: linear-gradient(135deg, #ffffff 0%, #eaf8ff 100%);
 }
 
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.account-card,
+.required-income-panel,
+.overflow-panel,
+.briefing-page {
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.account-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.account-card span,
+.account-card p,
+.required-income-head span,
+.required-income-grid span,
+.overflow-panel span,
+.overflow-panel p,
+.briefing-page p {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.account-card strong {
+  color: var(--blue-dark);
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.account-card p,
+.overflow-panel p,
+.briefing-page p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.required-income-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #effbf3 100%);
+}
+
+.required-income-head,
+.required-income-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.required-income-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.required-income-head span,
+.required-income-head strong {
+  display: block;
+}
+
+.required-income-head strong {
+  margin-top: 4px;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.required-income-compare {
+  display: grid;
+  gap: 5px;
+  min-width: 240px;
+  padding: 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.required-income-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.required-income-grid div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: var(--paper-soft);
+}
+
+.required-income-grid strong {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.required-income-grid .is-total {
+  border-color: var(--line);
+  background: var(--yellow);
+}
+
+.overflow-panel {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-color: #2f8f5b;
+  background: #effbf3;
+}
+
+.overflow-panel strong {
+  display: block;
+  margin: 4px 0;
+  color: #167044;
+  font-size: 24px;
+}
+
+.briefing-page {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+}
+
 .income-panel::after {
   content: "";
   position: absolute;
@@ -1192,10 +1323,83 @@ h2 {
   margin-bottom: 18px;
 }
 
-.fund-grid {
+.fund-grid,
+.fund-group-body {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
   gap: 14px;
+}
+
+.fund-grid {
+  grid-template-columns: 1fr;
+}
+
+.fund-group {
+  display: grid;
+  gap: 12px;
+}
+
+.fund-group-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr);
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  box-shadow: 4px 4px 0 rgba(24, 50, 79, 0.1);
+  text-align: left;
+}
+
+.fund-group-head::before {
+  content: "▾";
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  font-weight: 900;
+  transform: translateY(-50%);
+}
+
+.fund-group.is-collapsed .fund-group-head::before {
+  content: "▸";
+}
+
+.fund-group-head > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.fund-group-head span,
+.fund-group-stats span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.fund-group-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-right: 26px;
+}
+
+.fund-group-stats span {
+  padding: 6px 8px;
+  border: 1px solid var(--soft-line);
+  border-radius: 999px;
+  background: var(--paper-soft);
+}
+
+.fund-group-body {
+  grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+}
+
+.fund-group.is-collapsed .fund-group-body {
+  display: none;
 }
 
 .fund-card {
@@ -1215,6 +1419,27 @@ h2 {
 
 .fund-card.is-frozen {
   opacity: 0.72;
+}
+
+.fund-card.is-complete {
+  border-color: #167044;
+  background: linear-gradient(135deg, #ffffff 0%, #effbf3 100%);
+}
+
+.fund-card.is-complete::before {
+  background: #22c55e;
+}
+
+.complete-check {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #167044;
+  border-radius: var(--radius);
+  background: #22c55e;
+  color: #fff;
+  font-weight: 900;
 }
 
 .fund-card.is-frozen::after {
@@ -1286,6 +1511,32 @@ h2 {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin: 14px 0 12px;
+}
+
+.fund-last-topup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -2px 0 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.fund-last-topup span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fund-last-topup strong {
+  font-size: 15px;
+}
+
+.fund-last-topup .is-positive {
+  color: #167044;
 }
 
 .fund-money div {
@@ -1665,6 +1916,11 @@ h2 {
   .user-panel,
   .income-panel,
   .income-form,
+  .account-grid,
+  .required-income-head,
+  .required-income-grid,
+  .briefing-page,
+  .fund-group-head,
   .briefing-layout,
   .briefing-grid,
   .briefing-item,
@@ -1695,6 +1951,7 @@ h2 {
   }
 
   .fund-money,
+  .fund-group-body,
   .form-grid,
   .detail-grid {
     grid-template-columns: 1fr;

@@ -10,6 +10,25 @@ const LEGACY_STATE_CONFIG = {
   id: "personal-finance"
 };
 
+const SESSION_STORAGE_KEY = "money-system.supabase-session";
+const FUND_CATEGORIES = [
+  "Кредиты",
+  "Обязательные платежи",
+  "Жизнь и быт",
+  "Комфорт",
+  "Резерв",
+  "Бизнес",
+  "Хотелки",
+  "Другое"
+];
+const REQUIRED_INCOME_BUCKETS = [
+  { key: "obligations", label: "Обязательные платежи", categories: ["Кредиты", "Обязательные платежи"] },
+  { key: "life", label: "Расходы на жизнь", categories: ["Жизнь и быт"] },
+  { key: "comfort", label: "Комфорт", categories: ["Комфорт"] },
+  { key: "reserve", label: "Резервы", categories: ["Резерв"] },
+  { key: "goals", label: "Цели", categories: ["Бизнес", "Хотелки", "Другое"] }
+];
+
 const defaultFunds = [
   {
     id: createId(),
@@ -22,6 +41,7 @@ const defaultFunds = [
     target: 0,
     percent: 30,
     priority: 1,
+    category: "Обязательные платежи",
     description: "Регулярные платежи, долги и важные обязательства."
   },
   {
@@ -35,6 +55,7 @@ const defaultFunds = [
     target: 150000,
     percent: 20,
     priority: 2,
+    category: "Резерв",
     description: "Подушка безопасности и деньги на непредвиденное."
   },
   {
@@ -48,6 +69,7 @@ const defaultFunds = [
     target: 250000,
     percent: 25,
     priority: 3,
+    category: "Хотелки",
     description: "Накопления на покупки, ремонт, поездки или проекты."
   },
   {
@@ -61,6 +83,7 @@ const defaultFunds = [
     target: 0,
     percent: 15,
     priority: 4,
+    category: "Бизнес",
     description: "Обучение, инструменты, бизнес и рост дохода."
   },
   {
@@ -74,6 +97,7 @@ const defaultFunds = [
     target: 0,
     percent: 10,
     priority: 5,
+    category: "Комфорт",
     description: "Повседневные желания и небольшие радости."
   }
 ];
@@ -88,6 +112,8 @@ let session = null;
 let pendingResetAction = null;
 let briefingStep = 0;
 let hasAutoOfferedBriefing = false;
+let lastOverflow = null;
+const collapsedCategories = new Set();
 
 const els = {
   authModal: document.querySelector("#authModal"),
@@ -111,9 +137,14 @@ const els = {
   navButtons: document.querySelectorAll(".nav-btn"),
   screenTitle: document.querySelector("#screenTitle"),
   screens: {
+    account: document.querySelector("#accountScreen"),
     dashboard: document.querySelector("#dashboardScreen"),
-    history: document.querySelector("#historyScreen")
+    history: document.querySelector("#historyScreen"),
+    briefing: document.querySelector("#briefingScreen")
   },
+  accountEmail: document.querySelector("#accountEmail"),
+  accountMonth: document.querySelector("#accountMonth"),
+  accountSummary: document.querySelector("#accountSummary"),
   incomeForm: document.querySelector("#incomeForm"),
   incomeAmount: document.querySelector("#incomeAmount"),
   incomeComment: document.querySelector("#incomeComment"),
@@ -122,6 +153,8 @@ const els = {
   sidebarPercent: document.querySelector("#sidebarPercent"),
   sidebarPercentHint: document.querySelector("#sidebarPercentHint"),
   fundGrid: document.querySelector("#fundGrid"),
+  requiredIncomePanel: document.querySelector("#requiredIncomePanel"),
+  overflowPanel: document.querySelector("#overflowPanel"),
   fundCount: document.querySelector("#fundCount"),
   donutChart: document.querySelector("#donutChart"),
   donutTotal: document.querySelector("#donutTotal"),
@@ -167,6 +200,7 @@ const els = {
   fundMonthTarget: document.querySelector("#fundMonthTarget"),
   fundPercent: document.querySelector("#fundPercent"),
   fundPriority: document.querySelector("#fundPriority"),
+  fundCategory: document.querySelector("#fundCategory"),
   fundDescription: document.querySelector("#fundDescription"),
   historyList: document.querySelector("#historyList"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
@@ -185,6 +219,7 @@ const els = {
   monthList: document.querySelector("#monthList"),
   fundDetailModal: document.querySelector("#fundDetailModal"),
   fundDetailContent: document.querySelector("#fundDetailContent"),
+  openBriefingPageBtn: document.querySelector("#openBriefingPageBtn"),
   toast: document.querySelector("#toast")
 };
 
@@ -331,10 +366,43 @@ function normalizeFund(fund) {
     target: Number(fund.target) || 0,
     percent: Number(fund.percent) || 0,
     priority: Number(fund.priority) || 1,
+    category: normalizeCategory(fund.category || inferFundCategory(fund)),
     description: fund.description || "",
     type: fund.type || "custom",
     isFrozen: Boolean(fund.isFrozen)
   };
+}
+
+function normalizeCategory(value) {
+  return FUND_CATEGORIES.includes(value) ? value : "Другое";
+}
+
+function inferFundCategory(fund = {}) {
+  const type = String(fund.type || "");
+  const name = String(fund.name || "").toLowerCase();
+  if (type.includes("debt") || name.includes("кредит") || name.includes("долг")) {
+    return "Кредиты";
+  }
+  if (type === "required_payment" || name.includes("обяз")) {
+    return "Обязательные платежи";
+  }
+  if (type === "life" || name.includes("еда") || name.includes("быт") || name.includes("транспорт")) {
+    return "Жизнь и быт";
+  }
+  if (type === "comfort" || name.includes("комфорт") || name.includes("личное")) {
+    return "Комфорт";
+  }
+  if (type === "reserve" || name.includes("резерв")) {
+    return "Резерв";
+  }
+  if (type.includes("business") || name.includes("бизнес") || name.includes("развит")) {
+    return "Бизнес";
+  }
+  if (type.includes("goal") || name.includes("цель")) {
+    return "Хотелки";
+  }
+
+  return "Другое";
 }
 
 function suggestMonthTarget(fund) {
@@ -555,10 +623,38 @@ function normalizeSession(value) {
 
 function saveSession(nextSession) {
   session = normalizeSession(nextSession);
+  if (session) {
+    writeStoredSession(session);
+  }
 }
 
 function clearSession() {
   session = null;
+  removeStoredSession();
+}
+
+function loadStoredSession() {
+  try {
+    return normalizeSession(JSON.parse(globalThis.localStorage?.getItem(SESSION_STORAGE_KEY) || "null"));
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredSession(nextSession) {
+  try {
+    globalThis.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+  } catch {
+    // Auth still works for the current tab if persistent storage is unavailable.
+  }
+}
+
+function removeStoredSession() {
+  try {
+    globalThis.localStorage?.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    // Nothing else to clear if the browser storage is unavailable.
+  }
 }
 
 async function refreshSessionIfNeeded() {
@@ -571,10 +667,15 @@ async function refreshSessionIfNeeded() {
     return;
   }
 
-  const refreshed = await authRequest("/token?grant_type=refresh_token", {
-    refresh_token: session.refresh_token
-  });
-  saveSession(refreshed);
+  try {
+    const refreshed = await authRequest("/token?grant_type=refresh_token", {
+      refresh_token: session.refresh_token
+    });
+    saveSession(refreshed);
+  } catch (error) {
+    clearSession();
+    throw error;
+  }
 }
 
 async function signIn(email, password) {
@@ -635,7 +736,18 @@ function dateTime(value) {
 }
 
 function roundMoney(value) {
-  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+  const number = parseDecimal(value);
+  return Math.round((number + Number.EPSILON) * 100) / 100;
+}
+
+function parseDecimal(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const normalized = String(value ?? "").trim().replace(",", ".");
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : 0;
 }
 
 function progressOf(fund) {
@@ -694,12 +806,89 @@ function render() {
   els.percentWarning.textContent = getWarningText(percent, valid);
   els.currentMonthLabel.textContent = monthLabel(state.currentMonthKey);
 
+  renderAccount();
+  renderRequiredIncome();
+  renderOverflow();
   renderFunds();
   renderDistribution();
   renderMonthList();
   renderHistory();
   saveState();
   maybeOfferBriefing();
+}
+
+function renderAccount() {
+  if (!els.accountEmail) {
+    return;
+  }
+
+  const active = activeFunds();
+  const monthTarget = active.reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0);
+  const monthBalance = active.reduce((sum, fund) => sum + Number(fund.monthBalance || 0), 0);
+  els.accountEmail.textContent = session?.user?.email || "-";
+  els.accountMonth.textContent = monthLabel(state.currentMonthKey);
+  els.accountSummary.textContent = `${active.length} активных фондов · пополнено ${money(monthBalance)} из ${money(monthTarget)}.`;
+}
+
+function requiredIncomeSummary(includeFrozen = false) {
+  const funds = state.funds.filter((fund) => includeFrozen || !fund.isFrozen);
+  const buckets = REQUIRED_INCOME_BUCKETS.map((bucket) => {
+    const amount = funds
+      .filter((fund) => bucket.categories.includes(normalizeCategory(fund.category)))
+      .reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0);
+    return { ...bucket, amount: roundMoney(amount) };
+  });
+  const total = roundMoney(buckets.reduce((sum, bucket) => sum + bucket.amount, 0));
+  return { buckets, total };
+}
+
+function renderRequiredIncome() {
+  const active = requiredIncomeSummary(false);
+  const withFrozen = requiredIncomeSummary(true);
+  const hasFrozen = state.funds.some((fund) => fund.isFrozen);
+  els.requiredIncomePanel.innerHTML = `
+    <div class="required-income-head">
+      <div>
+        <span>Сколько нужно заработать в месяц</span>
+        <strong>Чтобы закрыть все потребности месяца, нужно заработать: ${money(active.total)}.</strong>
+      </div>
+      ${hasFrozen ? `
+        <div class="required-income-compare">
+          <span>Без фондов на паузе: ${money(active.total)}</span>
+          <span>С учетом фондов на паузе: ${money(withFrozen.total)}</span>
+        </div>
+      ` : ""}
+    </div>
+    <div class="required-income-grid">
+      ${active.buckets.map((bucket) => `
+        <div>
+          <span>${escapeHtml(bucket.label)}</span>
+          <strong>${money(bucket.amount)}</strong>
+        </div>
+      `).join("")}
+      <div class="is-total">
+        <span>Общий нужный доход</span>
+        <strong>${money(active.total)}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function renderOverflow() {
+  if (!lastOverflow?.amount) {
+    els.overflowPanel.classList.add("is-hidden");
+    els.overflowPanel.innerHTML = "";
+    return;
+  }
+
+  els.overflowPanel.classList.remove("is-hidden");
+  els.overflowPanel.innerHTML = `
+    <div>
+      <span>Сверх плана месяца</span>
+      <strong>${money(lastOverflow.amount)}</strong>
+      <p>${escapeHtml(lastOverflow.plan)}</p>
+    </div>
+  `;
 }
 
 function renderAuthState() {
@@ -713,6 +902,48 @@ function renderAuthState() {
   if (isSignedIn && els.authModal.open) {
     els.authModal.close();
   }
+}
+
+function currentRoute() {
+  return window.location.hash.replace(/^#\/?/, "") || "";
+}
+
+function routeToHash(screen) {
+  return screen === "account" ? "#cabinet" : `#${screen}`;
+}
+
+function screenFromRoute(route = currentRoute()) {
+  const normalized = route.split("?")[0];
+  if (normalized === "cabinet" || normalized === "account") {
+    return "account";
+  }
+  if (["dashboard", "history", "briefing"].includes(normalized)) {
+    return normalized;
+  }
+  return "account";
+}
+
+function isPrivateRoute(route = currentRoute()) {
+  const normalized = route.split("?")[0];
+  return ["cabinet", "account", "dashboard", "history", "briefing"].includes(normalized);
+}
+
+function applyRoute() {
+  const route = currentRoute();
+  if (!session?.user?.id) {
+    renderAuthState();
+    if (route === "login" || route === "signup") {
+      openAuthModal();
+    }
+    return;
+  }
+
+  if (!isPrivateRoute(route)) {
+    switchScreen("account");
+    return;
+  }
+
+  switchScreen(screenFromRoute(route), { skipHash: true });
 }
 
 function demoAmountValue() {
@@ -755,7 +986,7 @@ function renderDemo(amount = demoAmountValue()) {
       <div class="demo-row" data-demo-fund="${fund.id}" style="--preview-color: ${fund.color}">
         <input class="demo-name-input" data-demo-name="${fund.id}" type="text" value="${escapeHtml(fund.name)}" maxlength="40" aria-label="Название демо-фонда">
         <label class="demo-percent-input">
-          <input data-demo-percent="${fund.id}" type="number" min="0" step="1" value="${fund.percent}" aria-label="Процент демо-фонда">
+          <input data-demo-percent="${fund.id}" type="text" inputmode="decimal" value="${fund.percent}" aria-label="Процент демо-фонда">
           <span>%</span>
         </label>
         <strong data-demo-allocation="${fund.id}">${money(fund.allocation)}</strong>
@@ -828,20 +1059,81 @@ function updateDemoFund(id, field, value) {
   }
 }
 
+function fundsByCategory() {
+  const groups = new Map(FUND_CATEGORIES.map((category) => [category, []]));
+  sortedFunds().forEach((fund) => {
+    groups.get(normalizeCategory(fund.category)).push(fund);
+  });
+
+  return [...groups.entries()].filter(([, funds]) => funds.length);
+}
+
+function groupTotals(funds) {
+  return {
+    balance: roundMoney(funds.reduce((sum, fund) => sum + Number(fund.balance || 0), 0)),
+    monthTarget: roundMoney(funds.reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0)),
+    percent: roundMoney(funds.filter((fund) => !fund.isFrozen).reduce((sum, fund) => sum + Number(fund.percent || 0), 0))
+  };
+}
+
+function currentMonthAllocationsForFund(fundId) {
+  return state.history
+    .filter((item) => item.periodKey === state.currentMonthKey && Array.isArray(item.allocations))
+    .flatMap((item) => item.allocations.map((allocation) => ({ ...allocation, date: item.date })))
+    .filter((allocation) => allocation.fundId === fundId && Number(allocation.amount) > 0)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function lastTopUpFor(fund) {
+  return currentMonthAllocationsForFund(fund.id)[0]?.amount || 0;
+}
+
+function fundIsComplete(fund) {
+  return Number(fund.monthTarget || 0) > 0 && Number(fund.monthBalance || 0) >= Number(fund.monthTarget || 0);
+}
+
 function renderFunds() {
-  const funds = sortedFunds();
+  const groups = fundsByCategory();
+  const funds = groups.flatMap(([, groupFunds]) => groupFunds);
   els.fundCount.textContent = `${funds.length} фондов`;
-  els.fundGrid.innerHTML = funds.map((fund) => {
-    const progress = monthProgressOf(fund);
+  els.fundGrid.innerHTML = groups.map(([category, groupFunds]) => {
+    const totals = groupTotals(groupFunds);
+    const isCollapsed = collapsedCategories.has(category);
     return `
-      <article class="fund-card ${fund.isFrozen ? "is-frozen" : ""}" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
+      <section class="fund-group ${isCollapsed ? "is-collapsed" : ""}" data-fund-group="${escapeHtml(category)}">
+        <button class="fund-group-head" type="button" data-toggle-group="${escapeHtml(category)}" aria-expanded="${!isCollapsed}">
+          <div>
+            <strong>${escapeHtml(category)}</strong>
+            <span>${groupFunds.length} фондов</span>
+          </div>
+          <div class="fund-group-stats">
+            <span>Баланс ${money(totals.balance)}</span>
+            <span>Цель месяца ${money(totals.monthTarget)}</span>
+            <span>${totals.percent}%</span>
+          </div>
+        </button>
+        <div class="fund-group-body">
+          ${groupFunds.map(renderFundCard).join("")}
+        </div>
+      </section>
+    `;
+  }).join("");
+}
+
+function renderFundCard(fund) {
+  const progress = monthProgressOf(fund);
+  const complete = fundIsComplete(fund);
+  const lastTopUp = lastTopUpFor(fund);
+  return `
+      <article class="fund-card ${fund.isFrozen ? "is-frozen" : ""} ${complete ? "is-complete" : ""}" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
         <div class="fund-head">
           <div class="fund-icon">${escapeHtml(fund.icon)}</div>
           <div class="fund-title">
             <h3>${escapeHtml(fund.name)}</h3>
-            <div class="fund-meta">${fund.isFrozen ? "заморожен" : `${fund.percent}% дохода · месяц`}</div>
+            <div class="fund-meta">${escapeHtml(fund.category)} · ${fund.isFrozen ? "заморожен" : `${fund.percent}% дохода · месяц`}</div>
           </div>
           <div class="fund-actions">
+            ${complete ? `<span class="complete-check" aria-label="Готово">✓</span>` : ""}
             <button class="icon-btn" type="button" data-edit="${fund.id}" aria-label="Редактировать ${escapeHtml(fund.name)}">✎</button>
             <button class="icon-btn" type="button" data-delete="${fund.id}" aria-label="Удалить ${escapeHtml(fund.name)}">×</button>
           </div>
@@ -856,6 +1148,10 @@ function renderFunds() {
             <strong>${money(fund.monthTarget || 0)}</strong>
           </div>
         </div>
+        <div class="fund-last-topup">
+          <span>${complete ? "Готово" : "Последнее пополнение"}</span>
+          <strong class="${complete ? "" : "is-positive"}">${complete ? "Готово" : `+${money(lastTopUp)}`}</strong>
+        </div>
         <div class="progress-track">
           <span class="progress-fill" style="--progress: ${progress}%"></span>
         </div>
@@ -869,7 +1165,6 @@ function renderFunds() {
         </div>
       </article>
     `;
-  }).join("");
 }
 
 function renderDistribution() {
@@ -980,17 +1275,23 @@ function distributeIncome(amount, comment) {
   }
 
   const fundsToAllocate = activeFunds();
-  const allocations = fundsToAllocate.map((fund) => {
-    const value = roundMoney(amount * fund.percent / 100);
-    fund.balance = roundMoney(fund.balance + value);
-    fund.monthBalance = roundMoney((fund.monthBalance || 0) + value);
-    return {
-      fundId: fund.id,
-      fundName: fund.name,
-      amount: value,
-      percent: fund.percent
-    };
+  const allocations = allocateIncomeWithMonthlyLimits(amount, fundsToAllocate);
+  allocations.forEach((allocation) => {
+    const fund = state.funds.find((item) => item.id === allocation.fundId);
+    if (!fund) {
+      return;
+    }
+    fund.balance = roundMoney(fund.balance + allocation.amount);
+    fund.monthBalance = roundMoney((fund.monthBalance || 0) + allocation.amount);
   });
+  const allocatedTotal = roundMoney(allocations.reduce((sum, allocation) => sum + allocation.amount, 0));
+  const overflowAmount = roundMoney(amount - allocatedTotal);
+  lastOverflow = overflowAmount > 0
+    ? {
+        amount: overflowAmount,
+        plan: buildOverflowPlan(overflowAmount)
+      }
+    : null;
 
   state.history.push({
     id: createId(),
@@ -999,12 +1300,76 @@ function distributeIncome(amount, comment) {
     amount,
     periodKey: state.currentMonthKey,
     comment: comment || "Распределено автоматически",
-    allocations
+    allocations,
+    overflow: overflowAmount
   });
 
-  showToast(`Распределено ${money(amount)} по ${fundsToAllocate.length} фондам.`);
+  showToast(overflowAmount > 0
+    ? `Распределено ${money(allocatedTotal)}. Сверх плана: ${money(overflowAmount)}.`
+    : `Распределено ${money(allocatedTotal)} по ${fundsToAllocate.length} фондам.`);
   els.incomeForm.reset();
   render();
+}
+
+function allocateIncomeWithMonthlyLimits(amount, funds) {
+  const allocationMap = new Map();
+  let pool = 0;
+
+  funds.forEach((fund) => {
+    const planned = roundMoney(amount * Number(fund.percent || 0) / 100);
+    const room = monthRemainingOf(fund);
+    const value = roundMoney(Math.min(planned, room));
+    if (value > 0) {
+      allocationMap.set(fund.id, {
+        fundId: fund.id,
+        fundName: fund.name,
+        amount: value,
+        percent: fund.percent
+      });
+    }
+    pool = roundMoney(pool + Math.max(0, planned - value));
+  });
+
+  const priorityFunds = [...funds].sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name, "ru"));
+  let moved = true;
+  while (pool > 0 && moved) {
+    moved = false;
+    for (const fund of priorityFunds) {
+      const existing = allocationMap.get(fund.id)?.amount || 0;
+      const room = Math.max(0, monthRemainingOf(fund) - existing);
+      const value = roundMoney(Math.min(pool, room));
+      if (value <= 0) {
+        continue;
+      }
+      const current = allocationMap.get(fund.id) || {
+        fundId: fund.id,
+        fundName: fund.name,
+        amount: 0,
+        percent: fund.percent
+      };
+      current.amount = roundMoney(current.amount + value);
+      allocationMap.set(fund.id, current);
+      pool = roundMoney(pool - value);
+      moved = true;
+      if (pool <= 0) {
+        break;
+      }
+    }
+  }
+
+  return [...allocationMap.values()].filter((allocation) => allocation.amount > 0);
+}
+
+function buildOverflowPlan(amount) {
+  const nextFunds = activeFunds()
+    .sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name, "ru"))
+    .slice(0, 3)
+    .map((fund) => fund.name);
+  if (!nextFunds.length) {
+    return "Все месячные планы закрыты. Перенесите остаток на следующий месяц или создайте новый фонд.";
+  }
+
+  return `Остаток можно перенести на следующий месяц и распределить в первую очередь: ${nextFunds.join(", ")}.`;
 }
 
 function openFundModal(fund) {
@@ -1019,6 +1384,7 @@ function openFundModal(fund) {
   els.fundMonthTarget.value = fund?.monthTarget ?? suggestMonthTarget(fund);
   els.fundPercent.value = fund?.percent ?? 0;
   els.fundPriority.value = fund?.priority ?? state.funds.length + 1;
+  els.fundCategory.value = normalizeCategory(fund?.category || inferFundCategory(fund));
   els.fundDescription.value = fund?.description || "";
   els.fundModal.showModal();
 }
@@ -1040,6 +1406,7 @@ function saveFundFromForm() {
     target: roundMoney(els.fundTarget.value),
     percent: roundMoney(els.fundPercent.value),
     priority: Number(els.fundPriority.value) || 1,
+    category: normalizeCategory(els.fundCategory.value),
     description: els.fundDescription.value.trim(),
     type: previousFund?.type || "custom",
     isFrozen: Boolean(previousFund?.isFrozen)
@@ -1155,7 +1522,7 @@ function openFundDetails(fund) {
     <p class="detail-description">${escapeHtml(fund.description || "Без описания")}</p>
     <div class="detail-row">
       <span>${forecastFor(fund)}</span>
-      <span>${fund.isFrozen ? "заморожен" : `${fund.percent}% дохода`} · приоритет ${fund.priority}</span>
+      <span>${escapeHtml(fund.category)} · ${fund.isFrozen ? "заморожен" : `${fund.percent}% дохода`} · приоритет ${fund.priority}</span>
     </div>
   `;
   els.fundDetailModal.showModal();
@@ -1312,6 +1679,7 @@ function isDefaultFundEquivalent(fund, defaultFund) {
     "target",
     "percent",
     "priority",
+    "category",
     "description"
   ];
 
@@ -1536,6 +1904,7 @@ function createBriefFund(data) {
     name: data.name,
     description: data.description || "",
     type: data.type,
+    category: normalizeCategory(data.category || inferFundCategory(data)),
     block: data.block,
     weight: Math.max(1, Number(data.weight) || 1),
     isFrozen: Boolean(data.isFrozen)
@@ -1857,20 +2226,27 @@ function applyBriefing() {
   render();
 }
 
-function switchScreen(screen) {
+function switchScreen(screen, options = {}) {
+  const nextScreen = els.screens[screen] ? screen : "account";
   Object.entries(els.screens).forEach(([key, node]) => {
-    node.classList.toggle("is-visible", key === screen);
+    node.classList.toggle("is-visible", key === nextScreen);
   });
 
   els.navButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.screen === screen);
+    button.classList.toggle("is-active", button.dataset.screen === nextScreen);
   });
 
   const titles = {
+    account: "Личный кабинет",
     dashboard: "Мои деньги",
-    history: "История операций"
+    history: "История операций",
+    briefing: "Онбординг"
   };
-  els.screenTitle.textContent = titles[screen];
+  els.screenTitle.textContent = titles[nextScreen];
+
+  if (options.skipHash !== true && window.location.hash !== routeToHash(nextScreen)) {
+    window.location.hash = routeToHash(nextScreen);
+  }
 }
 
 function canChangeData() {
@@ -1910,7 +2286,15 @@ els.navButtons.forEach((button) => {
   button.addEventListener("click", () => switchScreen(button.dataset.screen));
 });
 
+window.addEventListener("hashchange", applyRoute);
+
 function openAuthModal() {
+  if (session?.user?.id) {
+    renderAuthState();
+    switchScreen("account");
+    return;
+  }
+
   els.authMessage.textContent = "";
   if (!els.authModal.open) {
     els.authModal.showModal();
@@ -2024,6 +2408,8 @@ els.addComfortBtn.addEventListener("click", addComfortRow);
 
 els.addGoalBtn.addEventListener("click", addGoalRow);
 
+els.openBriefingPageBtn?.addEventListener("click", () => openBriefing());
+
 els.briefingForm.addEventListener("input", renderBriefingPreview);
 
 els.briefingForm.addEventListener("change", renderBriefingPreview);
@@ -2072,9 +2458,20 @@ document.addEventListener("click", (event) => {
 });
 
 els.fundGrid.addEventListener("click", (event) => {
+  const group = event.target.closest("[data-toggle-group]")?.dataset.toggleGroup;
   const editId = event.target.closest("[data-edit]")?.dataset.edit;
   const deleteId = event.target.closest("[data-delete]")?.dataset.delete;
   const cardId = event.target.closest("[data-fund-card]")?.dataset.fundCard;
+
+  if (group) {
+    if (collapsedCategories.has(group)) {
+      collapsedCategories.delete(group);
+    } else {
+      collapsedCategories.add(group);
+    }
+    renderFunds();
+    return;
+  }
 
   if (editId) {
     openFundModal(state.funds.find((fund) => fund.id === editId));
@@ -2148,12 +2545,21 @@ els.resetEverythingBtn.addEventListener("click", () => {
 async function initApp() {
   isBooted = true;
   renderDemo();
+  session = loadStoredSession();
   if (session) {
-    await bootAuthenticatedApp();
+    try {
+      await refreshSessionIfNeeded();
+      await bootAuthenticatedApp();
+    } catch {
+      storageStatus = "Сессия истекла. Войдите заново.";
+      renderAuthState();
+      render();
+    }
   } else {
     storageStatus = "Войдите, чтобы загрузить данные из Supabase.";
     renderAuthState();
     render();
+    applyRoute();
   }
 }
 
@@ -2163,6 +2569,7 @@ async function bootAuthenticatedApp() {
   state = await loadState();
   renderAuthState();
   render();
+  applyRoute();
 }
 
 function translateAuthError(message) {
