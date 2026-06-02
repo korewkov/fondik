@@ -88,7 +88,12 @@ let pendingResetAction = null;
 
 const els = {
   authModal: document.querySelector("#authModal"),
+  publicShell: document.querySelector("#publicShell"),
   authOpenBtn: document.querySelector("#authOpenBtn"),
+  authTriggerButtons: document.querySelectorAll("[data-auth-trigger]"),
+  demoForm: document.querySelector("#demoForm"),
+  demoAmount: document.querySelector("#demoAmount"),
+  demoResult: document.querySelector("#demoResult"),
   authCloseBtn: document.querySelector("#authCloseBtn"),
   appShell: document.querySelector("#appShell"),
   authForm: document.querySelector("#authForm"),
@@ -660,6 +665,8 @@ function render() {
 
 function renderAuthState() {
   const isSignedIn = Boolean(session?.user?.id);
+  els.publicShell.classList.toggle("is-hidden", isSignedIn);
+  els.appShell.classList.toggle("is-hidden", !isSignedIn);
   els.authOpenBtn.classList.toggle("is-hidden", isSignedIn);
   els.userAccount.classList.toggle("is-hidden", !isSignedIn);
   els.userEmail.textContent = session?.user?.email || "";
@@ -667,6 +674,27 @@ function renderAuthState() {
   if (isSignedIn && els.authModal.open) {
     els.authModal.close();
   }
+}
+
+function renderDemo(amount = Number(els.demoAmount.value) || 0) {
+  const safeAmount = Math.max(0, roundMoney(amount));
+  const funds = defaultFunds.map((fund) => ({
+    ...fund,
+    allocation: roundMoney(safeAmount * fund.percent / 100)
+  }));
+
+  els.demoResult.innerHTML = `
+    <div class="demo-total">
+      <span>Пример поступления</span>
+      <strong>${money(safeAmount)}</strong>
+    </div>
+    ${funds.map((fund) => `
+      <div class="demo-row" style="--preview-color: ${fund.color}">
+        <span>${escapeHtml(fund.name)} · ${fund.percent}%</span>
+        <strong>${money(fund.allocation)}</strong>
+      </div>
+    `).join("")}
+  `;
 }
 
 function renderFunds() {
@@ -1128,9 +1156,26 @@ els.navButtons.forEach((button) => {
   button.addEventListener("click", () => switchScreen(button.dataset.screen));
 });
 
-els.authOpenBtn.addEventListener("click", () => {
+function openAuthModal() {
   els.authMessage.textContent = "";
-  els.authModal.showModal();
+  if (!els.authModal.open) {
+    els.authModal.showModal();
+  }
+}
+
+els.authOpenBtn.addEventListener("click", openAuthModal);
+
+els.authTriggerButtons.forEach((button) => {
+  button.addEventListener("click", openAuthModal);
+});
+
+els.demoForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  renderDemo(els.demoAmount.value);
+});
+
+els.demoAmount.addEventListener("input", () => {
+  renderDemo(els.demoAmount.value);
 });
 
 els.authCloseBtn.addEventListener("click", () => {
@@ -1285,6 +1330,7 @@ els.clearHistoryBtn.addEventListener("click", () => {
 
 async function initApp() {
   isBooted = true;
+  renderDemo();
   if (session) {
     await bootAuthenticatedApp();
   } else {

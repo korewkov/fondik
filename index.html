@@ -34,7 +34,104 @@
     </div>
   </dialog>
 
-  <div class="app-shell" id="appShell">
+  <div class="public-shell" id="publicShell">
+    <header class="public-header">
+      <a class="brand public-brand" href="#top" aria-label="Система денег">
+        <img class="brand-logo" src="assets/logo.png" alt="">
+        <div>
+          <strong>Система денег</strong>
+          <span>фонды и цели</span>
+        </div>
+      </a>
+      <nav class="public-nav" aria-label="Публичная навигация">
+        <a href="#howItWorks">Как работает</a>
+        <a href="#features">Возможности</a>
+        <a href="#demo">Демо</a>
+      </nav>
+      <button class="primary-btn compact" data-auth-trigger type="button">Войти</button>
+    </header>
+
+    <main class="public-main" id="top">
+      <section class="public-hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Личная система фондов</p>
+          <h1>Доход сразу попадает на свои места</h1>
+          <p>Создайте фонды для обязательных платежей, резерва, целей и личных трат. Укажите проценты один раз, а затем распределяйте каждое поступление без таблиц и ручной рутины.</p>
+          <div class="hero-actions">
+            <button class="primary-btn" data-auth-trigger type="button">Начать с аккаунтом</button>
+            <a class="ghost-btn" href="#demo">Посмотреть демо</a>
+          </div>
+        </div>
+        <div class="hero-preview" aria-label="Пример распределения дохода">
+          <div class="preview-top">
+            <span>Поступление</span>
+            <strong>75 000 ₽</strong>
+          </div>
+          <div class="preview-funds">
+            <div style="--preview-color: #3b82f6"><span>Обязательные платежи</span><strong>22 500 ₽</strong></div>
+            <div style="--preview-color: #14b8a6"><span>Резерв</span><strong>15 000 ₽</strong></div>
+            <div style="--preview-color: #f59e0b"><span>Крупные цели</span><strong>18 750 ₽</strong></div>
+            <div style="--preview-color: #22c55e"><span>Развитие</span><strong>11 250 ₽</strong></div>
+            <div style="--preview-color: #ec4899"><span>Личное</span><strong>7 500 ₽</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="public-section" id="howItWorks">
+        <div class="section-heading wide">
+          <div>
+            <p class="eyebrow">Механика</p>
+            <h2>Три шага вместо вечного пересчета</h2>
+          </div>
+        </div>
+        <div class="step-grid">
+          <article class="public-card">
+            <span>01</span>
+            <h3>Настройте фонды</h3>
+            <p>Назначьте процент, цель месяца, общий лимит и приоритет для каждой финансовой роли.</p>
+          </article>
+          <article class="public-card">
+            <span>02</span>
+            <h3>Введите доход</h3>
+            <p>Система делит сумму по заданным правилам и показывает, куда ушел каждый рубль.</p>
+          </article>
+          <article class="public-card">
+            <span>03</span>
+            <h3>Следите за месяцами</h3>
+            <p>История операций и закрытые месяцы помогают видеть динамику, а не только текущий остаток.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="public-section feature-band" id="features">
+        <div>
+          <p class="eyebrow">Лучшее внутри</p>
+          <h2>Функционал, который получает пользователь после входа</h2>
+        </div>
+        <div class="feature-list">
+          <div><strong>Персональные фонды</strong><span>Создание, редактирование, проценты, цели и приоритеты.</span></div>
+          <div><strong>Автораспределение</strong><span>Одно поступление превращается в понятные начисления по фондам.</span></div>
+          <div><strong>История и месяцы</strong><span>Журнал операций, закрытие месяца и автоматический переход календаря.</span></div>
+          <div><strong>Сохранение в аккаунте</strong><span>Данные хранятся отдельно для каждого пользователя через Supabase.</span></div>
+        </div>
+      </section>
+
+      <section class="public-section demo-section" id="demo">
+        <div class="demo-copy">
+          <p class="eyebrow">Демо-доступ</p>
+          <h2>Попробуйте принцип без регистрации</h2>
+          <p>Введите примерный доход: демо покажет, как сумма раскладывается по стартовым фондам. Для сохранения реальных данных понадобится вход.</p>
+          <form class="demo-form" id="demoForm">
+            <input id="demoAmount" type="number" min="1" step="100" value="75000" aria-label="Сумма для демо">
+            <button class="primary-btn" type="submit">Распределить</button>
+          </form>
+        </div>
+        <div class="demo-result" id="demoResult"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="app-shell is-hidden" id="appShell">
     <aside class="sidebar" aria-label="Основная навигация">
       <div class="brand">
         <img class="brand-logo" src="assets/logo.png" alt="">
