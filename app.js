@@ -241,7 +241,7 @@ function createDefaultState() {
   };
 }
 
-async function loadState() {
+async function loadState(options = {}) {
   if (!isSupabaseConfigured()) {
     storageStatus = "Supabase не настроен. Укажите url и apiKey в app.js.";
     isStorageReady = false;
@@ -249,7 +249,9 @@ async function loadState() {
   }
 
   try {
-    await refreshSessionIfNeeded();
+    if (!options.skipRefresh) {
+      await refreshSessionIfNeeded();
+    }
     const userId = session.user.id;
     const rows = await supabaseRequest("GET", `/${SUPABASE_CONFIG.table}?user_id=eq.${encodeURIComponent(userId)}&select=data&limit=1`);
 
@@ -729,7 +731,7 @@ async function refreshSessionIfNeeded() {
 async function signIn(email, password) {
   const nextSession = await authRequest("/token?grant_type=password", { email, password });
   saveSession(nextSession);
-  await bootAuthenticatedApp();
+  await bootAuthenticatedApp({ skipRefresh: true });
   showToast("Вы вошли в систему.");
 }
 
@@ -744,7 +746,7 @@ async function signUp(email, password, login = "") {
   });
   if (result?.access_token) {
     saveSession(result);
-    await bootAuthenticatedApp();
+    await bootAuthenticatedApp({ skipRefresh: true });
     updateProfileLogin(safeLogin, { silent: true });
     showToast("Аккаунт создан.");
     return;
@@ -2697,19 +2699,7 @@ async function initApp() {
   renderDemo();
   session = loadStoredSession();
   if (session) {
-    try {
-      await withTimeout(refreshSessionIfNeeded(), 8000, "Восстановление сессии");
-      await withTimeout(bootAuthenticatedApp(), 12000, "Загрузка кабинета");
-    } catch {
-      if (isPrivateAppPage) {
-        clearSession();
-        redirectToLogin();
-        return;
-      }
-      storageStatus = "Сессия истекла. Войдите заново.";
-      renderAuthState();
-      render();
-    }
+    await bootAuthenticatedApp();
   } else {
     if (isPrivateAppPage) {
       redirectToLogin();
@@ -2722,13 +2712,29 @@ async function initApp() {
   }
 }
 
-async function bootAuthenticatedApp() {
+async function bootAuthenticatedApp(options = {}) {
   hasAutoOfferedBriefing = false;
-  renderAuthState();
-  state = await loadState();
   renderAuthState();
   render();
   applyRoute();
+
+  try {
+    const refreshedBeforeLoad = !options.skipRefresh;
+    if (refreshedBeforeLoad) {
+      await withTimeout(refreshSessionIfNeeded(), 8000, "Восстановление сессии");
+    }
+    state = await withTimeout(loadState({ skipRefresh: refreshedBeforeLoad || options.skipRefresh }), 12000, "Загрузка кабинета");
+    renderAuthState();
+    render();
+    applyRoute();
+  } catch (error) {
+    storageStatus = `Не удалось загрузить данные: ${error.message}`;
+    isStorageReady = false;
+    showToast(storageStatus);
+    renderAuthState();
+    render();
+    applyRoute();
+  }
 }
 
 function translateAuthError(message) {
