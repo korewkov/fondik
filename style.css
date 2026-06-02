@@ -889,48 +889,61 @@ h2 {
   background: linear-gradient(135deg, #ffffff 0%, #eaf8ff 100%);
 }
 
-.account-grid {
+.dashboard-summary-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
+  align-items: stretch;
+  margin-bottom: 12px;
 }
 
-.account-card,
+.month-summary-card,
 .required-income-panel,
-.overflow-panel,
-.briefing-page {
+.overflow-panel {
   border: 2px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow);
 }
 
-.account-card {
+.month-summary-card {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding: 18px;
+  padding: 12px;
 }
 
-.account-card span,
-.account-card p,
+.month-summary-card div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: var(--paper-soft);
+}
+
+.month-summary-card span,
 .required-income-head span,
 .required-income-grid span,
 .overflow-panel span,
-.overflow-panel p,
-.briefing-page p {
+.overflow-panel p {
   color: var(--muted);
   font-weight: 800;
 }
 
-.account-card strong {
+.month-summary-card span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.month-summary-card strong {
+  display: block;
   color: var(--blue-dark);
-  font-size: 24px;
+  font-size: 20px;
   overflow-wrap: anywhere;
 }
 
-.account-card p,
-.overflow-panel p,
-.briefing-page p {
+.overflow-panel p {
   margin: 0;
   line-height: 1.45;
 }
@@ -950,7 +963,7 @@ h2 {
 }
 
 .required-income-head {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: start;
 }
 
@@ -1010,14 +1023,6 @@ h2 {
   margin: 4px 0;
   color: #167044;
   font-size: 24px;
-}
-
-.briefing-page {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 20px;
 }
 
 .income-panel::after {
@@ -1916,10 +1921,10 @@ h2 {
   .user-panel,
   .income-panel,
   .income-form,
-  .account-grid,
+  .dashboard-summary-row,
+  .month-summary-card,
   .required-income-head,
   .required-income-grid,
-  .briefing-page,
   .fund-group-head,
   .briefing-layout,
   .briefing-grid,

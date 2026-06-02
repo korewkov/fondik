@@ -6,7 +6,7 @@
   <title>Система денег</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/favicon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260603-1">
+  <link rel="stylesheet" href="style.css?v=20260603-2">
 </head>
 <body>
   <dialog class="auth-modal" id="authModal">
@@ -141,10 +141,8 @@
       </div>
 
       <nav class="nav">
-        <button class="nav-btn is-active" data-screen="account">Кабинет</button>
-        <button class="nav-btn" data-screen="dashboard">Дашборд</button>
+        <button class="nav-btn is-active" data-screen="dashboard">Дашборд</button>
         <button class="nav-btn" data-screen="history">История</button>
-        <button class="nav-btn" data-screen="briefing">Брифинг</button>
       </nav>
 
       <div class="sidebar-card">
@@ -169,22 +167,7 @@
         </div>
       </header>
 
-      <section class="screen is-visible" id="accountScreen">
-        <div class="account-grid">
-          <article class="account-card">
-            <span>Аккаунт</span>
-            <strong id="accountEmail">-</strong>
-            <p>Личные фонды, история операций и закрытые месяцы загружаются из вашего профиля Supabase.</p>
-          </article>
-          <article class="account-card">
-            <span>Текущий месяц</span>
-            <strong id="accountMonth">-</strong>
-            <p id="accountSummary">Откройте дашборд, чтобы распределить новое поступление.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="screen" id="dashboardScreen">
+      <section class="screen is-visible" id="dashboardScreen">
         <div class="income-panel">
           <div class="income-copy">
             <span>Новое поступление</span>
@@ -198,6 +181,10 @@
           <div class="warning" id="percentWarning" role="alert"></div>
         </div>
 
+        <div class="dashboard-summary-row">
+          <div class="month-summary-card" id="monthSummaryCard"></div>
+          <button class="ghost-btn compact is-hidden" id="showRequiredIncomeBtn" type="button">Показать расчет дохода</button>
+        </div>
         <div class="required-income-panel" id="requiredIncomePanel"></div>
         <div class="overflow-panel is-hidden" id="overflowPanel"></div>
 
@@ -270,16 +257,6 @@
         <div class="history-list" id="historyList"></div>
       </section>
 
-      <section class="screen" id="briefingScreen">
-        <div class="briefing-page">
-          <div>
-            <p class="eyebrow">Онбординг</p>
-            <h2>Брифинг фондов</h2>
-            <p>Запустите персональную настройку, чтобы пересобрать фонды под реальные платежи, быт, комфорт, резерв и цели.</p>
-          </div>
-          <button class="primary-btn" id="openBriefingPageBtn" type="button">Открыть брифинг</button>
-        </div>
-      </section>
     </main>
   </div>
 
@@ -547,6 +524,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260603-1"></script>
+  <script src="app.js?v=20260603-2"></script>
 </body>
 </html>

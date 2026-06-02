@@ -11,6 +11,7 @@ const LEGACY_STATE_CONFIG = {
 };
 
 const SESSION_STORAGE_KEY = "money-system.supabase-session";
+const REQUIRED_INCOME_VISIBILITY_KEY = "money-system.required-income-hidden";
 const FUND_CATEGORIES = [
   "Кредиты",
   "Обязательные платежи",
@@ -113,6 +114,7 @@ let pendingResetAction = null;
 let briefingStep = 0;
 let hasAutoOfferedBriefing = false;
 let lastOverflow = null;
+let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY);
 const collapsedCategories = new Set();
 
 const els = {
@@ -137,14 +139,9 @@ const els = {
   navButtons: document.querySelectorAll(".nav-btn"),
   screenTitle: document.querySelector("#screenTitle"),
   screens: {
-    account: document.querySelector("#accountScreen"),
     dashboard: document.querySelector("#dashboardScreen"),
-    history: document.querySelector("#historyScreen"),
-    briefing: document.querySelector("#briefingScreen")
+    history: document.querySelector("#historyScreen")
   },
-  accountEmail: document.querySelector("#accountEmail"),
-  accountMonth: document.querySelector("#accountMonth"),
-  accountSummary: document.querySelector("#accountSummary"),
   incomeForm: document.querySelector("#incomeForm"),
   incomeAmount: document.querySelector("#incomeAmount"),
   incomeComment: document.querySelector("#incomeComment"),
@@ -153,6 +150,8 @@ const els = {
   sidebarPercent: document.querySelector("#sidebarPercent"),
   sidebarPercentHint: document.querySelector("#sidebarPercentHint"),
   fundGrid: document.querySelector("#fundGrid"),
+  monthSummaryCard: document.querySelector("#monthSummaryCard"),
+  showRequiredIncomeBtn: document.querySelector("#showRequiredIncomeBtn"),
   requiredIncomePanel: document.querySelector("#requiredIncomePanel"),
   overflowPanel: document.querySelector("#overflowPanel"),
   fundCount: document.querySelector("#fundCount"),
@@ -219,7 +218,6 @@ const els = {
   monthList: document.querySelector("#monthList"),
   fundDetailModal: document.querySelector("#fundDetailModal"),
   fundDetailContent: document.querySelector("#fundDetailContent"),
-  openBriefingPageBtn: document.querySelector("#openBriefingPageBtn"),
   toast: document.querySelector("#toast")
 };
 
@@ -641,6 +639,22 @@ function loadStoredSession() {
   }
 }
 
+function readBooleanPreference(key) {
+  try {
+    return globalThis.localStorage?.getItem(key) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeBooleanPreference(key, value) {
+  try {
+    globalThis.localStorage?.setItem(key, String(Boolean(value)));
+  } catch {
+    // The UI still works for the current tab if preferences cannot be persisted.
+  }
+}
+
 function writeStoredSession(nextSession) {
   try {
     globalThis.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
@@ -806,7 +820,7 @@ function render() {
   els.percentWarning.textContent = getWarningText(percent, valid);
   els.currentMonthLabel.textContent = monthLabel(state.currentMonthKey);
 
-  renderAccount();
+  renderMonthSummary();
   renderRequiredIncome();
   renderOverflow();
   renderFunds();
@@ -817,17 +831,30 @@ function render() {
   maybeOfferBriefing();
 }
 
-function renderAccount() {
-  if (!els.accountEmail) {
+function renderMonthSummary() {
+  if (!els.monthSummaryCard) {
     return;
   }
 
   const active = activeFunds();
   const monthTarget = active.reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0);
   const monthBalance = active.reduce((sum, fund) => sum + Number(fund.monthBalance || 0), 0);
-  els.accountEmail.textContent = session?.user?.email || "-";
-  els.accountMonth.textContent = monthLabel(state.currentMonthKey);
-  els.accountSummary.textContent = `${active.length} активных фондов · пополнено ${money(monthBalance)} из ${money(monthTarget)}.`;
+  const remaining = Math.max(0, roundMoney(monthTarget - monthBalance));
+  const progress = monthTarget ? Math.min(100, Math.round(monthBalance / monthTarget * 100)) : 0;
+  els.monthSummaryCard.innerHTML = `
+    <div>
+      <span>Внесено за месяц</span>
+      <strong>${money(monthBalance)}</strong>
+    </div>
+    <div>
+      <span>До целей месяца</span>
+      <strong>${money(remaining)}</strong>
+    </div>
+    <div>
+      <span>Прогресс</span>
+      <strong>${progress}%</strong>
+    </div>
+  `;
 }
 
 function requiredIncomeSummary(includeFrozen = false) {
@@ -843,6 +870,13 @@ function requiredIncomeSummary(includeFrozen = false) {
 }
 
 function renderRequiredIncome() {
+  els.requiredIncomePanel.classList.toggle("is-hidden", isRequiredIncomeHidden);
+  els.showRequiredIncomeBtn.classList.toggle("is-hidden", !isRequiredIncomeHidden);
+  if (isRequiredIncomeHidden) {
+    els.requiredIncomePanel.innerHTML = "";
+    return;
+  }
+
   const active = requiredIncomeSummary(false);
   const withFrozen = requiredIncomeSummary(true);
   const hasFrozen = state.funds.some((fund) => fund.isFrozen);
@@ -852,6 +886,7 @@ function renderRequiredIncome() {
         <span>Сколько нужно заработать в месяц</span>
         <strong>Чтобы закрыть все потребности месяца, нужно заработать: ${money(active.total)}.</strong>
       </div>
+      <button class="icon-btn" type="button" data-hide-required-income aria-label="Скрыть расчет дохода">×</button>
       ${hasFrozen ? `
         <div class="required-income-compare">
           <span>Без фондов на паузе: ${money(active.total)}</span>
@@ -909,23 +944,20 @@ function currentRoute() {
 }
 
 function routeToHash(screen) {
-  return screen === "account" ? "#cabinet" : `#${screen}`;
+  return `#${screen}`;
 }
 
 function screenFromRoute(route = currentRoute()) {
   const normalized = route.split("?")[0];
-  if (normalized === "cabinet" || normalized === "account") {
-    return "account";
-  }
-  if (["dashboard", "history", "briefing"].includes(normalized)) {
+  if (["dashboard", "history"].includes(normalized)) {
     return normalized;
   }
-  return "account";
+  return "dashboard";
 }
 
 function isPrivateRoute(route = currentRoute()) {
   const normalized = route.split("?")[0];
-  return ["cabinet", "account", "dashboard", "history", "briefing"].includes(normalized);
+  return ["dashboard", "history"].includes(normalized);
 }
 
 function applyRoute() {
@@ -939,7 +971,7 @@ function applyRoute() {
   }
 
   if (!isPrivateRoute(route)) {
-    switchScreen("account");
+    switchScreen("dashboard");
     return;
   }
 
@@ -2227,7 +2259,7 @@ function applyBriefing() {
 }
 
 function switchScreen(screen, options = {}) {
-  const nextScreen = els.screens[screen] ? screen : "account";
+  const nextScreen = els.screens[screen] ? screen : "dashboard";
   Object.entries(els.screens).forEach(([key, node]) => {
     node.classList.toggle("is-visible", key === nextScreen);
   });
@@ -2237,10 +2269,8 @@ function switchScreen(screen, options = {}) {
   });
 
   const titles = {
-    account: "Личный кабинет",
     dashboard: "Мои деньги",
-    history: "История операций",
-    briefing: "Онбординг"
+    history: "История операций"
   };
   els.screenTitle.textContent = titles[nextScreen];
 
@@ -2291,7 +2321,7 @@ window.addEventListener("hashchange", applyRoute);
 function openAuthModal() {
   if (session?.user?.id) {
     renderAuthState();
-    switchScreen("account");
+    switchScreen("dashboard");
     return;
   }
 
@@ -2408,7 +2438,21 @@ els.addComfortBtn.addEventListener("click", addComfortRow);
 
 els.addGoalBtn.addEventListener("click", addGoalRow);
 
-els.openBriefingPageBtn?.addEventListener("click", () => openBriefing());
+els.showRequiredIncomeBtn.addEventListener("click", () => {
+  isRequiredIncomeHidden = false;
+  writeBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY, false);
+  renderRequiredIncome();
+});
+
+els.requiredIncomePanel.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-hide-required-income]")) {
+    return;
+  }
+
+  isRequiredIncomeHidden = true;
+  writeBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY, true);
+  renderRequiredIncome();
+});
 
 els.briefingForm.addEventListener("input", renderBriefingPreview);
 
