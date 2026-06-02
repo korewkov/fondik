@@ -931,93 +931,112 @@ h2 {
   font-weight: 700;
 }
 
-.briefing-hero {
+.briefing-modal {
+  width: min(1120px, calc(100% - 28px));
+}
+
+.briefing-card {
+  overflow: hidden;
+  padding: 0;
+  background: #fff;
+}
+
+.briefing-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.18fr);
+  min-height: min(760px, calc(100vh - 44px));
+}
+
+.briefing-visual {
+  display: grid;
+  align-content: space-between;
   gap: 18px;
-  align-items: center;
-  margin-bottom: 18px;
-  padding: 20px;
-  border: 2px solid var(--line);
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, #ffffff 0%, #effbf3 100%);
-  box-shadow: var(--shadow);
+  padding: 24px;
+  border-right: 2px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(239, 251, 243, 0.94) 0%, rgba(232, 246, 255, 0.94) 100%);
 }
 
-.briefing-hero p:not(.eyebrow) {
-  max-width: 680px;
-  margin: 10px 0 0;
+.briefing-visual img {
+  width: 100%;
+  max-height: 310px;
+  object-fit: contain;
+}
+
+.briefing-visual-copy h2 {
+  margin-bottom: 10px;
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 0.98;
+}
+
+.briefing-visual-copy p:not(.eyebrow) {
+  margin: 0;
   color: var(--muted);
-  line-height: 1.55;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1.5;
 }
 
-.briefing-summary,
-.briefing-notes {
+.briefing-benefits {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
-.briefing-result {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  padding: 14px;
+.briefing-benefits span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
   border: 2px solid var(--line);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: var(--shadow);
+  background: #fff;
+  color: var(--blue-dark);
+  font-size: 13px;
+  font-weight: 900;
 }
 
-.briefing-result div,
-.briefing-preview div {
+.briefing-content {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: 14px;
   min-width: 0;
+  padding: 22px;
+}
+
+.briefing-head {
+  margin: 0;
+}
+
+.briefing-head h2 {
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1;
+}
+
+.briefing-close {
+  width: 42px;
+  height: 42px;
+  border-color: var(--sky);
+  font-size: 22px;
+}
+
+.briefing-progress {
+  display: grid;
+  gap: 10px;
   padding: 12px;
   border: 1px solid var(--soft-line);
   border-radius: var(--radius);
   background: var(--paper-soft);
 }
 
-.briefing-result span,
-.briefing-preview span {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
+.briefing-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.briefing-result strong,
-.briefing-preview strong {
-  display: block;
-  color: var(--blue-dark);
-  font-size: 18px;
-  overflow-wrap: anywhere;
-}
-
-.briefing-notes p {
-  margin: 0;
-  padding: 13px;
-  border-left: 6px solid var(--mint);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--muted);
-  font-weight: 800;
-  line-height: 1.45;
-}
-
-.briefing-modal {
-  width: min(920px, calc(100% - 28px));
-}
-
-.briefing-card {
-  display: grid;
-  gap: 14px;
-}
-
-.briefing-progress {
-  display: grid;
-  gap: 8px;
+.briefing-progress span,
+.briefing-progress strong {
   color: var(--muted);
   font-size: 13px;
   font-weight: 900;
@@ -1032,7 +1051,18 @@ h2 {
   display: grid;
 }
 
-.briefing-step > label,
+.briefing-step-card {
+  display: grid;
+  gap: 14px;
+  align-self: start;
+  padding: 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 5px 5px 0 rgba(24, 50, 79, 0.1);
+}
+
+.briefing-step-card > label,
 .briefing-grid label {
   display: grid;
   gap: 7px;
@@ -1043,17 +1073,38 @@ h2 {
 
 .briefing-step-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 14px;
 }
 
-.briefing-step-head h3 {
-  margin-bottom: 6px;
+.briefing-step-intro {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
 }
 
-.briefing-step-head p {
-  max-width: 680px;
+.briefing-step-intro > span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--yellow);
+  color: var(--blue-dark);
+  box-shadow: 4px 4px 0 var(--sky);
+  font-weight: 900;
+}
+
+.briefing-step-intro h3 {
+  margin-bottom: 5px;
+  font-size: 22px;
+}
+
+.briefing-step-intro p {
+  max-width: 620px;
   margin: 0;
   color: var(--muted);
   font-weight: 700;
@@ -1069,6 +1120,9 @@ h2 {
 .briefing-items {
   display: grid;
   gap: 9px;
+  max-height: 250px;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .briefing-item {
@@ -1079,7 +1133,7 @@ h2 {
   padding: 10px;
   border: 1px solid var(--soft-line);
   border-radius: var(--radius);
-  background: var(--paper-soft);
+  background: #fff;
 }
 
 .compact-briefing-item {
@@ -1090,8 +1144,37 @@ h2 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  padding-top: 14px;
+  padding: 12px;
   border-top: 2px solid var(--line);
+  background: var(--paper-soft);
+  border-radius: var(--radius);
+}
+
+.briefing-preview div {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.briefing-preview span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.briefing-preview strong {
+  display: block;
+  color: var(--blue-dark);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.briefing-actions {
+  margin: 0;
 }
 
 .dashboard-layout {
@@ -1562,7 +1645,7 @@ h2 {
   }
 
   .nav {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .nav-btn {
@@ -1582,8 +1665,7 @@ h2 {
   .user-panel,
   .income-panel,
   .income-form,
-  .briefing-hero,
-  .briefing-result,
+  .briefing-layout,
   .briefing-grid,
   .briefing-item,
   .compact-briefing-item,
@@ -1597,6 +1679,19 @@ h2 {
 
   .auth-actions {
     grid-template-columns: 1fr;
+  }
+
+  .briefing-layout {
+    min-height: auto;
+  }
+
+  .briefing-visual {
+    border-right: 0;
+    border-bottom: 2px solid var(--line);
+  }
+
+  .briefing-visual img {
+    max-height: 220px;
   }
 
   .fund-money,

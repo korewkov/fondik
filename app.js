@@ -87,6 +87,7 @@ let saveTimer;
 let session = null;
 let pendingResetAction = null;
 let briefingStep = 0;
+let hasAutoOfferedBriefing = false;
 
 const els = {
   authModal: document.querySelector("#authModal"),
@@ -111,7 +112,6 @@ const els = {
   screenTitle: document.querySelector("#screenTitle"),
   screens: {
     dashboard: document.querySelector("#dashboardScreen"),
-    briefing: document.querySelector("#briefingScreen"),
     history: document.querySelector("#historyScreen")
   },
   incomeForm: document.querySelector("#incomeForm"),
@@ -129,13 +129,11 @@ const els = {
   distributionLegend: document.querySelector("#distributionLegend"),
   addFundBtn: document.querySelector("#addFundBtn"),
   addMonthBtn: document.querySelector("#addMonthBtn"),
-  openBriefingBtn: document.querySelector("#openBriefingBtn"),
-  startBriefingBtn: document.querySelector("#startBriefingBtn"),
-  briefingSummary: document.querySelector("#briefingSummary"),
   briefingModal: document.querySelector("#briefingModal"),
   briefingForm: document.querySelector("#briefingForm"),
   briefingStepTitle: document.querySelector("#briefingStepTitle"),
   briefingStepLabel: document.querySelector("#briefingStepLabel"),
+  briefingStepHint: document.querySelector("#briefingStepHint"),
   briefingMeter: document.querySelector("#briefingMeter"),
   briefingSteps: document.querySelectorAll(".briefing-step"),
   briefingBackBtn: document.querySelector("#briefingBackBtn"),
@@ -700,8 +698,8 @@ function render() {
   renderDistribution();
   renderMonthList();
   renderHistory();
-  renderBriefingSummary();
   saveState();
+  maybeOfferBriefing();
 }
 
 function renderAuthState() {
@@ -1206,6 +1204,7 @@ function resetAll() {
 
   closeResetConfirm();
   state = createDefaultState();
+  hasAutoOfferedBriefing = false;
   showToast("Все данные сброшены.");
   render();
 }
@@ -1276,16 +1275,86 @@ function confirmPendingReset() {
 }
 
 const briefingSteps = [
-  "Доход",
-  "Обязательные платежи",
-  "Долги",
-  "Базовая жизнь",
-  "Комфорт и резерв",
-  "Цели и развитие"
+  {
+    title: "Доход",
+    hint: "Понимаем ритм поступлений"
+  },
+  {
+    title: "Обязательные платежи",
+    hint: "Отделяем то, что нельзя пропустить"
+  },
+  {
+    title: "Долги",
+    hint: "Ищем самые опасные обязательства"
+  },
+  {
+    title: "Базовая жизнь",
+    hint: "Собираем устойчивый минимум"
+  },
+  {
+    title: "Комфорт и резерв",
+    hint: "Оставляем защиту и нормальную жизнь"
+  },
+  {
+    title: "Цели и развитие",
+    hint: "Расставляем желания по приоритетам"
+  }
 ];
 
-function openBriefing() {
-  if (!canChangeData()) {
+function isDefaultFundEquivalent(fund, defaultFund) {
+  const comparableFields = [
+    "name",
+    "icon",
+    "color",
+    "balance",
+    "monthBalance",
+    "monthTarget",
+    "target",
+    "percent",
+    "priority",
+    "description"
+  ];
+
+  return comparableFields.every((field) => {
+    if (typeof defaultFund[field] === "number") {
+      return roundMoney(fund[field]) === roundMoney(defaultFund[field]);
+    }
+    return String(fund[field] || "") === String(defaultFund[field] || "");
+  }) && !fund.isFrozen && (!fund.type || fund.type === "custom");
+}
+
+function hasStandardFundsOnly(nextState = state) {
+  const funds = Array.isArray(nextState.funds) ? nextState.funds : [];
+  if (funds.length !== defaultFunds.length) {
+    return false;
+  }
+
+  return defaultFunds.every((defaultFund) => {
+    const fund = funds.find((item) => item.name === defaultFund.name);
+    return fund && isDefaultFundEquivalent(fund, defaultFund);
+  });
+}
+
+function shouldOfferBriefing(nextState = state) {
+  return Boolean(session?.user?.id)
+    && isStorageReady
+    && hasStandardFundsOnly(nextState)
+    && !nextState.briefing
+    && !nextState.history.length
+    && !nextState.months.length;
+}
+
+function maybeOfferBriefing() {
+  if (hasAutoOfferedBriefing || !shouldOfferBriefing() || els.briefingModal.open) {
+    return;
+  }
+
+  hasAutoOfferedBriefing = true;
+  window.setTimeout(() => openBriefing({ skipPermissionCheck: true }), 250);
+}
+
+function openBriefing(options = {}) {
+  if (!options.skipPermissionCheck && !canChangeData()) {
     return;
   }
 
@@ -1311,8 +1380,10 @@ function updateBriefingStep() {
     step.classList.toggle("is-active", index === briefingStep);
   });
 
-  els.briefingStepTitle.textContent = briefingSteps[briefingStep];
+  const step = briefingSteps[briefingStep];
+  els.briefingStepTitle.textContent = step.title;
   els.briefingStepLabel.textContent = `Шаг ${briefingStep + 1} из ${briefingSteps.length}`;
+  els.briefingStepHint.textContent = step.hint;
   els.briefingMeter.style.setProperty("--progress", `${roundMoney((briefingStep + 1) / briefingSteps.length * 100)}%`);
   els.briefingBackBtn.disabled = briefingStep === 0;
   els.briefingNextBtn.classList.toggle("is-hidden", briefingStep === briefingSteps.length - 1);
@@ -1756,42 +1827,6 @@ function renderBriefingPreview() {
   `;
 }
 
-function renderBriefingSummary() {
-  if (!els.briefingSummary) {
-    return;
-  }
-
-  if (!state.briefing) {
-    els.briefingSummary.innerHTML = `<div class="empty-state">Брифинг еще не пройден. Можно начать с нуля или продолжить ручную настройку фондов.</div>`;
-    return;
-  }
-
-  const result = state.briefing;
-  els.briefingSummary.innerHTML = `
-    <article class="briefing-result">
-      <div>
-        <span>Финансовый режим</span>
-        <strong>${escapeHtml(result.mode)}</strong>
-      </div>
-      <div>
-        <span>Обязательства</span>
-        <strong>${result.requiredPercent}% дохода</strong>
-      </div>
-      <div>
-        <span>Фондов</span>
-        <strong>${state.funds.length}</strong>
-      </div>
-      <div>
-        <span>Заморожено</span>
-        <strong>${state.funds.filter((fund) => fund.isFrozen).length}</strong>
-      </div>
-    </article>
-    <div class="briefing-notes">
-      ${result.recommendations.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}
-    </div>
-  `;
-}
-
 function applyBriefing() {
   if (!canChangeData()) {
     return;
@@ -1833,7 +1868,6 @@ function switchScreen(screen) {
 
   const titles = {
     dashboard: "Мои деньги",
-    briefing: "Брифинг",
     history: "История операций"
   };
   els.screenTitle.textContent = titles[screen];
@@ -1958,6 +1992,7 @@ els.logoutBtn.addEventListener("click", async () => {
   clearSession();
   state = createDefaultState();
   isStorageReady = false;
+  hasAutoOfferedBriefing = false;
   storageStatus = "Войдите, чтобы загрузить данные из Supabase.";
   renderAuthState();
   render();
@@ -1976,10 +2011,6 @@ els.incomeForm.addEventListener("submit", (event) => {
 els.addFundBtn.addEventListener("click", () => openFundModal());
 
 els.addMonthBtn.addEventListener("click", addMonth);
-
-els.openBriefingBtn.addEventListener("click", openBriefing);
-
-els.startBriefingBtn.addEventListener("click", openBriefing);
 
 els.briefingBackBtn.addEventListener("click", () => moveBriefingStep(-1));
 
@@ -2127,6 +2158,7 @@ async function initApp() {
 }
 
 async function bootAuthenticatedApp() {
+  hasAutoOfferedBriefing = false;
   renderAuthState();
   state = await loadState();
   renderAuthState();
