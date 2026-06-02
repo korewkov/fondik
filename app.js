@@ -152,6 +152,7 @@ const els = {
   resetConfirmText: document.querySelector("#resetConfirmText"),
   cancelResetBtn: document.querySelector("#cancelResetBtn"),
   confirmResetBtn: document.querySelector("#confirmResetBtn"),
+  resetEverythingBtn: document.querySelector("#resetEverythingBtn"),
   currentMonthLabel: document.querySelector("#currentMonthLabel"),
   monthList: document.querySelector("#monthList"),
   fundDetailModal: document.querySelector("#fundDetailModal"),
@@ -1130,6 +1131,30 @@ function resetMonth() {
   render();
 }
 
+function resetBalances() {
+  if (!canChangeData()) {
+    return;
+  }
+
+  closeResetConfirm();
+  const total = roundMoney(state.funds.reduce((sum, fund) => sum + Number(fund.balance || 0), 0));
+  state.funds = state.funds.map((fund) => ({
+    ...fund,
+    balance: 0,
+    monthBalance: 0
+  }));
+  state.history.push({
+    id: createId(),
+    date: new Date().toISOString(),
+    type: "Сброс балансов",
+    amount: total,
+    periodKey: state.currentMonthKey,
+    comment: "Обнулены балансы всех текущих фондов"
+  });
+  showToast("Балансы фондов сброшены.");
+  render();
+}
+
 function resetAll() {
   if (!canChangeData()) {
     return;
@@ -1171,12 +1196,22 @@ function openResetConfirm(action) {
 
   pendingResetAction = action;
   closeResetMenu();
-  const isAll = action === "all";
-  els.resetConfirmTitle.textContent = isAll ? "Сбросить все?" : "Сбросить месяц?";
-  els.resetConfirmText.textContent = isAll
-    ? "Будут удалены фонды, история и месяцы. Останутся только стартовые фонды."
-    : "Текущий месяц сохранится в динамике, затем месячные суммы обнулятся.";
-  els.confirmResetBtn.textContent = isAll ? "Да, сбросить все" : "Да, сбросить месяц";
+  const content = {
+    month: {
+      title: "Сбросить месяц?",
+      text: "Текущий месяц сохранится в динамике, затем месячные суммы обнулятся.",
+      button: "Да, сбросить месяц"
+    },
+    balances: {
+      title: "Сбросить балансы?",
+      text: "Фонды, проценты, цели, месяцы и история останутся. Обнулятся только накопленные суммы текущих фондов.",
+      button: "Да, сбросить балансы"
+    }
+  }[action];
+
+  els.resetConfirmTitle.textContent = content.title;
+  els.resetConfirmText.textContent = content.text;
+  els.confirmResetBtn.textContent = content.button;
   els.resetConfirm.classList.remove("is-hidden");
 }
 
@@ -1186,8 +1221,8 @@ function closeResetConfirm() {
 }
 
 function confirmPendingReset() {
-  if (pendingResetAction === "all") {
-    resetAll();
+  if (pendingResetAction === "balances") {
+    resetBalances();
     return;
   }
 
@@ -1354,7 +1389,7 @@ els.resetMenuBtn.addEventListener("click", openResetMenu);
 
 els.resetMonthOption.addEventListener("click", () => openResetConfirm("month"));
 
-els.resetAllOption.addEventListener("click", () => openResetConfirm("all"));
+els.resetAllOption.addEventListener("click", () => openResetConfirm("balances"));
 
 els.cancelResetBtn.addEventListener("click", closeResetConfirm);
 
@@ -1433,6 +1468,19 @@ els.clearHistoryBtn.addEventListener("click", () => {
     showToast("История очищена.");
     render();
   }
+});
+
+els.resetEverythingBtn.addEventListener("click", () => {
+  if (!canChangeData()) {
+    return;
+  }
+
+  const confirmed = confirm("Сбросить все данные? Будут удалены фонды, история и месяцы. Останутся только стартовые фонды.");
+  if (!confirmed) {
+    return;
+  }
+
+  resetAll();
 });
 
 async function initApp() {

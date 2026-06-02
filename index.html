@@ -193,7 +193,7 @@
                   <button class="ghost-btn compact danger" id="resetMenuBtn" type="button" aria-expanded="false">Сбросить</button>
                   <div class="reset-menu is-hidden" id="resetMenu">
                     <button type="button" id="resetMonthOption">Сбросить месяц</button>
-                    <button type="button" id="resetAllOption">Сбросить все</button>
+                    <button type="button" id="resetAllOption">Сбросить балансы</button>
                   </div>
                   <div class="inline-confirm is-hidden" id="resetConfirm" role="status">
                     <strong id="resetConfirmTitle">Сбросить?</strong>
@@ -242,7 +242,10 @@
             <p class="eyebrow">Журнал операций</p>
             <h2>История</h2>
           </div>
-          <button class="ghost-btn danger" id="clearHistoryBtn" type="button">Очистить историю</button>
+          <div class="section-actions">
+            <button class="ghost-btn danger" id="clearHistoryBtn" type="button">Очистить историю</button>
+            <button class="ghost-btn danger" id="resetEverythingBtn" type="button">Сбросить все данные</button>
+          </div>
         </div>
         <div class="history-list" id="historyList"></div>
       </section>
