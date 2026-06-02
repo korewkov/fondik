@@ -79,6 +79,7 @@ const defaultFunds = [
 ];
 
 let state = createDefaultState();
+let demoFunds = defaultFunds.map((fund) => ({ ...fund }));
 let storageStatus = "Подключение к Supabase еще не настроено.";
 let isStorageReady = false;
 let isBooted = false;
@@ -676,25 +677,81 @@ function renderAuthState() {
   }
 }
 
-function renderDemo(amount = Number(els.demoAmount.value) || 0) {
+function demoAmountValue() {
+  return Math.max(0, roundMoney(els.demoAmount.value));
+}
+
+function demoPercentTotal() {
+  return roundMoney(demoFunds.reduce((sum, fund) => sum + Number(fund.percent || 0), 0));
+}
+
+function renderDemo(amount = demoAmountValue()) {
   const safeAmount = Math.max(0, roundMoney(amount));
-  const funds = defaultFunds.map((fund) => ({
+  const percentTotal = demoPercentTotal();
+  const funds = demoFunds.map((fund) => ({
     ...fund,
     allocation: roundMoney(safeAmount * fund.percent / 100)
   }));
 
   els.demoResult.innerHTML = `
     <div class="demo-total">
-      <span>Пример поступления</span>
-      <strong>${money(safeAmount)}</strong>
+      <div>
+        <span>Пример поступления</span>
+        <small class="${percentTotal === 100 ? "" : "is-warning"}" id="demoPercentStatus">${percentTotal}% распределения</small>
+      </div>
+      <strong id="demoTotalAmount">${money(safeAmount)}</strong>
     </div>
     ${funds.map((fund) => `
-      <div class="demo-row" style="--preview-color: ${fund.color}">
-        <span>${escapeHtml(fund.name)} · ${fund.percent}%</span>
-        <strong>${money(fund.allocation)}</strong>
+      <div class="demo-row" data-demo-fund="${fund.id}" style="--preview-color: ${fund.color}">
+        <input class="demo-name-input" data-demo-name="${fund.id}" type="text" value="${escapeHtml(fund.name)}" maxlength="40" aria-label="Название демо-фонда">
+        <label class="demo-percent-input">
+          <input data-demo-percent="${fund.id}" type="number" min="0" step="1" value="${fund.percent}" aria-label="Процент демо-фонда">
+          <span>%</span>
+        </label>
+        <strong data-demo-allocation="${fund.id}">${money(fund.allocation)}</strong>
       </div>
     `).join("")}
   `;
+}
+
+function updateDemoAllocations() {
+  const safeAmount = demoAmountValue();
+  const percentTotal = demoPercentTotal();
+  const totalNode = document.querySelector("#demoTotalAmount");
+  const statusNode = document.querySelector("#demoPercentStatus");
+
+  if (totalNode) {
+    totalNode.textContent = money(safeAmount);
+  }
+
+  if (statusNode) {
+    statusNode.textContent = `${percentTotal}% распределения`;
+    statusNode.classList.toggle("is-warning", percentTotal !== 100);
+  }
+
+  demoFunds.forEach((fund) => {
+    const allocationNode = document.querySelector(`[data-demo-allocation="${fund.id}"]`);
+    if (allocationNode) {
+      allocationNode.textContent = money(safeAmount * fund.percent / 100);
+    }
+  });
+}
+
+function updateDemoFund(id, field, value) {
+  const fund = demoFunds.find((item) => item.id === id);
+  if (!fund) {
+    return;
+  }
+
+  if (field === "name") {
+    fund.name = value.trim() || "Демо-фонд";
+    return;
+  }
+
+  if (field === "percent") {
+    fund.percent = Math.max(0, roundMoney(value));
+    updateDemoAllocations();
+  }
 }
 
 function renderFunds() {
@@ -1171,11 +1228,25 @@ els.authTriggerButtons.forEach((button) => {
 
 els.demoForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  renderDemo(els.demoAmount.value);
+  updateDemoAllocations();
 });
 
 els.demoAmount.addEventListener("input", () => {
-  renderDemo(els.demoAmount.value);
+  updateDemoAllocations();
+});
+
+els.demoResult.addEventListener("input", (event) => {
+  const nameId = event.target.dataset.demoName;
+  const percentId = event.target.dataset.demoPercent;
+
+  if (nameId) {
+    updateDemoFund(nameId, "name", event.target.value);
+    return;
+  }
+
+  if (percentId) {
+    updateDemoFund(percentId, "percent", event.target.value);
+  }
 });
 
 els.authCloseBtn.addEventListener("click", () => {
