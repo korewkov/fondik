@@ -116,6 +116,7 @@ let hasAutoOfferedBriefing = false;
 let lastOverflow = null;
 let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY);
 const collapsedCategories = new Set();
+const isPrivateAppPage = window.location.pathname.endsWith("app.html");
 
 const els = {
   authModal: document.querySelector("#authModal"),
@@ -995,7 +996,7 @@ function renderOverflow() {
 
 function renderAuthState() {
   const isSignedIn = Boolean(session?.user?.id);
-  els.publicShell.classList.toggle("is-hidden", isSignedIn);
+  els.publicShell?.classList.toggle("is-hidden", isSignedIn);
   els.appShell.classList.toggle("is-hidden", !isSignedIn);
   els.authOpenBtn.classList.toggle("is-hidden", isSignedIn);
   els.userAccountBtn.classList.toggle("is-hidden", !isSignedIn);
@@ -1049,6 +1050,10 @@ function applyRoute() {
 }
 
 function demoAmountValue() {
+  if (!els.demoAmount) {
+    return 0;
+  }
+
   return Math.max(0, roundMoney(els.demoAmount.value));
 }
 
@@ -1068,8 +1073,12 @@ function demoScaleSegments() {
   }).join("");
 }
 
-function renderDemo(amount = demoAmountValue()) {
-  const safeAmount = Math.max(0, roundMoney(amount));
+function renderDemo(amount = null) {
+  if (!els.demoResult) {
+    return;
+  }
+
+  const safeAmount = Math.max(0, roundMoney(amount ?? demoAmountValue()));
   const percentTotal = demoPercentTotal();
   const funds = demoFunds.map((fund) => ({
     ...fund,
@@ -2410,16 +2419,16 @@ els.authTriggerButtons.forEach((button) => {
   button.addEventListener("click", openAuthModal);
 });
 
-els.demoForm.addEventListener("submit", (event) => {
+els.demoForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   updateDemoAllocations();
 });
 
-els.demoAmount.addEventListener("input", () => {
+els.demoAmount?.addEventListener("input", () => {
   updateDemoAllocations();
 });
 
-els.demoResult.addEventListener("input", (event) => {
+els.demoResult?.addEventListener("input", (event) => {
   const nameId = event.target.dataset.demoName;
   const percentId = event.target.dataset.demoPercent;
 
@@ -2484,6 +2493,9 @@ els.logoutBtn.addEventListener("click", async () => {
   storageStatus = "Войдите, чтобы загрузить данные из Supabase.";
   renderAuthState();
   render();
+  if (isPrivateAppPage) {
+    window.location.href = "index.html";
+  }
 });
 
 els.accountForm.addEventListener("submit", (event) => {
@@ -2674,11 +2686,19 @@ async function initApp() {
       await refreshSessionIfNeeded();
       await bootAuthenticatedApp();
     } catch {
+      if (isPrivateAppPage) {
+        window.location.href = "index.html#login";
+        return;
+      }
       storageStatus = "Сессия истекла. Войдите заново.";
       renderAuthState();
       render();
     }
   } else {
+    if (isPrivateAppPage) {
+      window.location.href = "index.html#login";
+      return;
+    }
     storageStatus = "Войдите, чтобы загрузить данные из Supabase.";
     renderAuthState();
     render();
