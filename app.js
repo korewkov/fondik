@@ -4427,6 +4427,10 @@ state = await withTimeout(loadState({ skipRefresh: refreshedBeforeLoad || option
     renderAuthState();
     render();
     applyRoute();
+     console.log("isStorageReady:", isStorageReady);
+    console.log("state.briefing:", state.briefing);
+    console.log("history length:", state.history.length);
+    console.log("shouldOfferQuickStart:", shouldOfferQuickStart());
     if (shouldOfferQuickStart()) {
       hasAutoOfferedBriefing = true;
       window.setTimeout(() => openQuickStart(), 600);
