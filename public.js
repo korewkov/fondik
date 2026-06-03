@@ -25,6 +25,7 @@ const els = {
   authMessage: document.querySelector("#authMessage"),
   loginBtn: document.querySelector("#loginBtn"),
   signupBtn: document.querySelector("#signupBtn"),
+  publicLogoutBtn: document.querySelector("#publicLogoutBtn"),
   demoForm: document.querySelector("#demoForm"),
   demoAmount: document.querySelector("#demoAmount"),
   demoResult: document.querySelector("#demoResult")
@@ -184,6 +185,10 @@ function saveSession(nextSession) {
   }
 }
 
+function clearSession() {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
 function redirectToApp() {
   window.location.href = "app.html#dashboard";
 }
@@ -239,6 +244,18 @@ els.authTriggerButtons.forEach((button) => {
   button.addEventListener("click", openAuthModal);
 });
 
+els.publicLogoutBtn.addEventListener("click", () => {
+  clearSession();
+  els.publicLogoutBtn.classList.add("is-hidden");
+  els.authTriggerButtons.forEach((button) => {
+    button.textContent = button.classList.contains("primary-btn") ? "Войти" : button.textContent;
+  });
+  document.querySelector(".public-header [data-auth-trigger]").textContent = "Войти";
+  document.querySelector(".hero-actions [data-auth-trigger]").textContent = "Начать с аккаунтом";
+  els.authMessage.textContent = "Сессия сброшена. Можно войти заново.";
+  openAuthModal();
+});
+
 els.authCloseBtn.addEventListener("click", () => els.authModal.close());
 
 els.authModal.addEventListener("click", (event) => {
@@ -289,6 +306,7 @@ if (localStorage.getItem(SESSION_STORAGE_KEY)) {
   document.querySelectorAll("[data-auth-trigger]").forEach((button) => {
     button.textContent = "В кабинет";
   });
+  els.publicLogoutBtn.classList.remove("is-hidden");
 }
 
 renderDemo();

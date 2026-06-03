@@ -146,6 +146,8 @@ const els = {
     dashboard: document.querySelector("#dashboardScreen"),
     history: document.querySelector("#historyScreen")
   },
+  profileSetupPanel: document.querySelector("#profileSetupPanel"),
+  profileSetupLogin: document.querySelector("#profileSetupLogin"),
   accountLogin: document.querySelector("#accountLogin"),
   accountEmail: document.querySelector("#accountEmail"),
   accountForm: document.querySelector("#accountForm"),
@@ -341,8 +343,13 @@ function normalizeState(value) {
 }
 
 function normalizeProfile(profile) {
+  const profileLogin = normalizeLogin(profile?.login);
+  const explicitLogin = profileLogin && profileLogin !== "Пользователь"
+    ? profileLogin
+    : normalizeLogin(session?.user?.user_metadata?.login);
   return {
-    login: normalizeLogin(profile?.login) || defaultUserLogin()
+    login: explicitLogin || defaultUserLogin(),
+    needsLoginSetup: !explicitLogin
   };
 }
 
@@ -764,7 +771,8 @@ function updateProfileLogin(login, options = {}) {
 
   state.profile = {
     ...(state.profile || {}),
-    login: safeLogin
+    login: safeLogin,
+    needsLoginSetup: false
   };
   saveState();
   renderAuthState();
@@ -900,6 +908,10 @@ function renderAccount() {
   els.accountLogin.textContent = login;
   els.accountEmail.textContent = session?.user?.email || "-";
   els.accountLoginInput.value = login;
+  els.profileSetupPanel?.classList.toggle("is-hidden", !state.profile?.needsLoginSetup);
+  if (els.profileSetupLogin && !els.profileSetupLogin.value) {
+    els.profileSetupLogin.value = login;
+  }
 }
 
 function renderMonthSummary() {
@@ -2520,6 +2532,11 @@ els.accountForm.addEventListener("submit", (event) => {
   updateProfileLogin(els.accountLoginInput.value);
 });
 
+els.profileSetupPanel?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  updateProfileLogin(els.profileSetupLogin.value);
+});
+
 els.incomeForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const amount = roundMoney(els.incomeAmount.value);
@@ -2714,6 +2731,7 @@ async function initApp() {
 
 async function bootAuthenticatedApp(options = {}) {
   hasAutoOfferedBriefing = false;
+  state.profile = normalizeProfile(state.profile);
   renderAuthState();
   render();
   applyRoute();

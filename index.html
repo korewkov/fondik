@@ -6,7 +6,7 @@
   <title>Система денег</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/favicon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260603-8">
+  <link rel="stylesheet" href="style.css?v=20260603-9">
 </head>
 <body>
   <dialog class="auth-modal" id="authModal">
@@ -49,7 +49,10 @@
         <a href="#features">Возможности</a>
         <a href="#demo">Демо</a>
       </nav>
-      <button class="primary-btn compact" data-auth-trigger type="button">Войти</button>
+      <div class="public-auth-actions">
+        <button class="primary-btn compact" data-auth-trigger type="button">Войти</button>
+        <button class="ghost-btn compact is-hidden" id="publicLogoutBtn" type="button">Выйти</button>
+      </div>
     </header>
 
     <main class="public-main" id="top">
@@ -133,6 +136,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="public.js?v=20260603-8"></script>
+  <script src="public.js?v=20260603-9"></script>
 </body>
 </html>

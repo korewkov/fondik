@@ -111,6 +111,13 @@ input[type="file"] {
   justify-content: center;
 }
 
+.public-auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .public-nav a {
   display: inline-flex;
   align-items: center;
@@ -943,6 +950,36 @@ h2 {
   padding: 18px;
   margin-bottom: 16px;
   background: linear-gradient(135deg, #ffffff 0%, #eaf8ff 100%);
+}
+
+.profile-setup-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 280px) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #ffffff 0%, #fff8d6 100%);
+  box-shadow: var(--shadow);
+}
+
+.profile-setup-panel span,
+.profile-setup-panel p {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.profile-setup-panel strong {
+  display: block;
+  margin: 3px 0;
+  font-size: 20px;
+}
+
+.profile-setup-panel p {
+  margin: 0;
+  line-height: 1.35;
 }
 
 .dashboard-summary-row {
@@ -1963,6 +2000,7 @@ h2 {
   .account-layout,
   .income-panel,
   .income-form,
+  .profile-setup-panel,
   .dashboard-summary-row,
   .month-summary-card,
   .required-income-head,

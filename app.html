@@ -6,7 +6,7 @@
   <title>Система денег</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/favicon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260603-8">
+  <link rel="stylesheet" href="style.css?v=20260603-9">
   <script>
     window.setTimeout(() => {
       const appShell = document.querySelector("#appShell");
@@ -86,6 +86,16 @@
       </header>
 
       <section class="screen is-visible" id="dashboardScreen">
+        <form class="profile-setup-panel is-hidden" id="profileSetupPanel">
+          <div>
+            <span>Профиль</span>
+            <strong>Добавьте короткий логин</strong>
+            <p>Пока показываем временный логин из email. Дашборд работает, но лучше сохранить свой логин.</p>
+          </div>
+          <input id="profileSetupLogin" type="text" maxlength="24" autocomplete="nickname" placeholder="Например, korewkov">
+          <button class="primary-btn compact" type="submit">Сохранить</button>
+        </form>
+
         <div class="income-panel">
           <div class="income-copy">
             <span>Новое поступление</span>
@@ -468,6 +478,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260603-8"></script>
+  <script src="app.js?v=20260603-9"></script>
 </body>
 </html>
