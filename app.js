@@ -1396,24 +1396,22 @@ function renderFinanceWarnings() {
     return;
   }
 
-  const collapsed = collapsedFinancePanels.has("warnings");
-  const visibleWarnings = areWarningsExpanded ? warnings : warnings.slice(0, 2);
-  const hasHiddenWarnings = warnings.length > visibleWarnings.length;
-  els.financeWarningsPanel.className = `finance-card finance-warnings-panel ${collapsed ? "is-collapsed" : ""}`;
-  els.financeWarningsPanel.innerHTML = collapsed
-    ? renderCollapsedFinanceCard("warnings", "Предупреждения", String(warnings.length), "Открыть")
-    : `
-      <div class="finance-card-head">
-        <span>${warnings.length === 1 ? "1 предупреждение" : `${warnings.length} предупреждения`}</span>
-        <button class="icon-btn compact-icon" type="button" data-collapse-finance-panel="warnings" aria-label="Скрыть предупреждения">×</button>
+  els.financeWarningsPanel.className = `finance-card finance-warnings-panel ${areWarningsExpanded ? "is-expanded" : "is-compact"}`;
+  els.financeWarningsPanel.innerHTML = `
+    <div class="finance-warning-summary">
+      <div>
+        <span>Предупреждения</span>
+        <strong>${warnings.length}</strong>
       </div>
-      <ol class="finance-warning-list">
-        ${visibleWarnings.map((warning) => `<li class="is-${warningSeverity(warning)}">${escapeHtml(warning)}</li>`).join("")}
-      </ol>
-      ${hasHiddenWarnings || areWarningsExpanded
-        ? `<button class="ghost-btn compact warning-toggle" type="button" data-toggle-warnings>${areWarningsExpanded ? "Скрыть" : "Показать все"}</button>`
-        : ""}
-    `;
+      <p>${escapeHtml(warnings[0])}</p>
+      <button class="ghost-btn compact warning-toggle" type="button" data-toggle-warnings>${areWarningsExpanded ? "Свернуть" : "Открыть"}</button>
+    </div>
+    ${areWarningsExpanded
+      ? `<ol class="finance-warning-list">
+          ${warnings.map((warning) => `<li class="is-${warningSeverity(warning)}">${escapeHtml(warning)}</li>`).join("")}
+        </ol>`
+      : ""}
+  `;
 }
 
 function renderCollapsedFinanceCard(key, label, value, meta) {
