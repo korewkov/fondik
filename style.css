@@ -991,12 +991,124 @@ h2 {
 }
 
 .month-summary-card,
+.finance-mode-panel,
+.free-balance-panel,
+.finance-warnings-panel,
 .required-income-panel,
 .overflow-panel {
   border: 2px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow);
+}
+
+.finance-mode-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 14px;
+}
+
+.finance-mode-panel.mode-crisis {
+  background: linear-gradient(135deg, #fff 0%, #ffe8e8 100%);
+}
+
+.finance-mode-panel.mode-stable {
+  background: linear-gradient(135deg, #fff 0%, #fff8d6 100%);
+}
+
+.finance-mode-panel.mode-growth {
+  background: linear-gradient(135deg, #fff 0%, #effbf3 100%);
+}
+
+.finance-mode-panel div,
+.month-brief-preview div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.finance-mode-panel span,
+.free-balance-panel p,
+.finance-warnings-head span,
+.finance-warnings-panel li,
+.month-brief-preview span,
+.debt-fields-head small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.finance-mode-panel span,
+.month-brief-preview span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.finance-mode-panel strong,
+.free-balance-panel strong,
+.finance-warnings-head strong,
+.month-brief-preview strong {
+  display: block;
+  color: var(--blue-dark);
+  font-size: 21px;
+  overflow-wrap: anywhere;
+}
+
+.finance-mode-panel p,
+.free-balance-panel p {
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
+
+.free-balance-panel,
+.finance-warnings-panel {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+}
+
+.free-balance-panel.is-negative {
+  border-color: #d94040;
+  background: #fff0f0;
+}
+
+.free-balance-panel.is-negative strong {
+  color: #b42323;
+}
+
+.free-balance-panel.is-positive {
+  border-color: #2f8f5b;
+  background: #effbf3;
+}
+
+.free-balance-panel.is-positive strong {
+  color: #167044;
+}
+
+.finance-warnings-panel {
+  background: #fff8d6;
+}
+
+.finance-warnings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.finance-warnings-panel ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.finance-warnings-panel li {
+  line-height: 1.42;
 }
 
 .month-summary-card {
@@ -1519,6 +1631,10 @@ h2 {
   opacity: 0.72;
 }
 
+.fund-card.is-system-paused {
+  border-color: #d28b00;
+}
+
 .fund-card.is-complete {
   border-color: #167044;
   background: linear-gradient(135deg, #ffffff 0%, #effbf3 100%);
@@ -1621,6 +1737,28 @@ h2 {
   border: 1px solid var(--soft-line);
   border-radius: var(--radius);
   background: #fff;
+}
+
+.fund-pause-note {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 -2px;
+  padding: 9px 10px;
+  border: 1px solid #f1c46a;
+  border-radius: var(--radius);
+  background: #fff8d6;
+}
+
+.fund-pause-note strong {
+  color: #9a6400;
+  font-size: 13px;
+}
+
+.fund-pause-note span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .fund-last-topup span {
@@ -1844,6 +1982,25 @@ h2 {
   margin: 18px 0;
 }
 
+.debt-detail-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.detail-warning {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #f1c46a;
+  border-radius: var(--radius);
+  background: #fff8d6;
+}
+
+.detail-warning span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .compact-detail-grid {
   margin-top: 14px;
 }
@@ -1900,6 +2057,47 @@ h2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin: 18px 0;
+}
+
+.debt-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: var(--paper-soft);
+}
+
+.debt-fields-head {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 3px;
+}
+
+.debt-fields-head span {
+  color: var(--blue-dark);
+  font-weight: 900;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 24px;
+  font-weight: 900;
+}
+
+.checkbox-label input {
+  width: 18px;
+  height: 18px;
+}
+
+.month-brief-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
 }
 
 .form-grid label {
@@ -2003,6 +2201,8 @@ h2 {
   .profile-setup-panel,
   .dashboard-summary-row,
   .month-summary-card,
+  .finance-mode-panel,
+  .month-brief-preview,
   .required-income-head,
   .required-income-grid,
   .fund-group-head,
@@ -2038,6 +2238,7 @@ h2 {
   .fund-money,
   .fund-group-body,
   .form-grid,
+  .debt-fields,
   .detail-grid {
     grid-template-columns: 1fr;
   }

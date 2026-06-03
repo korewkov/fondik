@@ -133,6 +133,9 @@
           <div class="month-summary-card" id="monthSummaryCard"></div>
           <button class="ghost-btn compact is-hidden" id="showRequiredIncomeBtn" type="button">Показать расчет дохода</button>
         </div>
+        <div class="finance-mode-panel" id="financeModePanel"></div>
+        <div class="free-balance-panel" id="freeBalancePanel"></div>
+        <div class="finance-warnings-panel" id="financeWarningsPanel"></div>
         <div class="required-income-panel" id="requiredIncomePanel"></div>
         <div class="overflow-panel is-hidden" id="overflowPanel"></div>
 
@@ -159,6 +162,7 @@
                     </div>
                   </div>
                 </div>
+                <button class="ghost-btn compact" id="editMonthBriefBtn" type="button">Бриф месяца</button>
                 <button class="ghost-btn compact" id="addMonthBtn" type="button">Новый месяц</button>
                 <button class="primary-btn compact" id="addFundBtn" type="button">Новый фонд</button>
               </div>
@@ -285,6 +289,40 @@
         <label class="span-2">Описание
           <textarea id="fundDescription" rows="3" maxlength="180"></textarea>
         </label>
+        <div class="debt-fields span-2">
+          <div class="debt-fields-head">
+            <span>Поля долга</span>
+            <small>Используются для расчетов процентов и предупреждений</small>
+          </div>
+          <label>Остаток долга
+            <input id="fundDebtBalance" type="number" min="0" step="0.01">
+          </label>
+          <label>Ставка годовых, %
+            <input id="fundAnnualRate" type="text" inputmode="decimal">
+          </label>
+          <label>Минимальный платеж
+            <input id="fundMinPayment" type="number" min="0" step="0.01">
+          </label>
+          <label>Дата платежа
+            <input id="fundPaymentDate" type="text" maxlength="40" placeholder="Например, 25 число">
+          </label>
+          <label>Доп. платеж
+            <input id="fundExtraPayment" type="number" min="0" step="0.01">
+          </label>
+          <label>Тип долга
+            <select id="fundDebtType">
+              <option value="credit_card">Кредитная карта</option>
+              <option value="loan">Кредит</option>
+              <option value="person">Долг человеку</option>
+              <option value="installment">Рассрочка</option>
+              <option value="other">Другое</option>
+            </select>
+          </label>
+          <label class="checkbox-label">
+            <input id="fundHasOverdue" type="checkbox">
+            <span>Есть просрочка</span>
+          </label>
+        </div>
       </div>
 
       <div class="modal-actions">
@@ -296,6 +334,46 @@
 
   <dialog class="fund-modal" id="fundDetailModal">
     <article class="modal-card fund-detail" id="fundDetailContent"></article>
+  </dialog>
+
+  <dialog class="fund-modal" id="monthBriefModal">
+    <form method="dialog" class="modal-card" id="monthBriefForm">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Новый месяц</p>
+          <h2 id="monthBriefTitle">Мини-бриф месяца</h2>
+        </div>
+        <button class="icon-btn" value="cancel" type="submit" aria-label="Закрыть">×</button>
+      </div>
+      <div class="form-grid">
+        <label>Ожидаемый доход месяца
+          <input id="monthBriefIncome" type="number" min="0" step="1">
+        </label>
+        <label>Обязательные платежи месяца
+          <input id="monthBriefRequired" type="number" min="0" step="1">
+        </label>
+        <label>Минимальные расходы на жизнь
+          <input id="monthBriefLife" type="number" min="0" step="1">
+        </label>
+        <label>Есть ли просрочки
+          <select id="monthBriefOverdue">
+            <option value="false">Нет просрочек</option>
+            <option value="true">Есть просрочки</option>
+          </select>
+        </label>
+        <label class="span-2">Какие фонды оставить на паузе
+          <textarea id="monthBriefPaused" rows="2" maxlength="220"></textarea>
+        </label>
+        <label class="span-2">Какие фонды обязательно активны
+          <textarea id="monthBriefActive" rows="2" maxlength="220"></textarea>
+        </label>
+      </div>
+      <div class="month-brief-preview" id="monthBriefPreview"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" value="cancel" type="submit">Позже</button>
+        <button class="primary-btn" value="default" type="submit">Сохранить бриф</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog class="fund-modal briefing-modal" id="briefingModal">

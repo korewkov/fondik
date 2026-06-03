@@ -158,6 +158,9 @@ const els = {
   percentWarning: document.querySelector("#percentWarning"),
   fundGrid: document.querySelector("#fundGrid"),
   monthSummaryCard: document.querySelector("#monthSummaryCard"),
+  financeModePanel: document.querySelector("#financeModePanel"),
+  freeBalancePanel: document.querySelector("#freeBalancePanel"),
+  financeWarningsPanel: document.querySelector("#financeWarningsPanel"),
   showRequiredIncomeBtn: document.querySelector("#showRequiredIncomeBtn"),
   requiredIncomePanel: document.querySelector("#requiredIncomePanel"),
   overflowPanel: document.querySelector("#overflowPanel"),
@@ -168,6 +171,7 @@ const els = {
   distributionLegend: document.querySelector("#distributionLegend"),
   addFundBtn: document.querySelector("#addFundBtn"),
   addMonthBtn: document.querySelector("#addMonthBtn"),
+  editMonthBriefBtn: document.querySelector("#editMonthBriefBtn"),
   briefingModal: document.querySelector("#briefingModal"),
   briefingForm: document.querySelector("#briefingForm"),
   briefingStepTitle: document.querySelector("#briefingStepTitle"),
@@ -208,6 +212,23 @@ const els = {
   fundPriority: document.querySelector("#fundPriority"),
   fundCategory: document.querySelector("#fundCategory"),
   fundDescription: document.querySelector("#fundDescription"),
+  fundDebtBalance: document.querySelector("#fundDebtBalance"),
+  fundAnnualRate: document.querySelector("#fundAnnualRate"),
+  fundMinPayment: document.querySelector("#fundMinPayment"),
+  fundPaymentDate: document.querySelector("#fundPaymentDate"),
+  fundHasOverdue: document.querySelector("#fundHasOverdue"),
+  fundExtraPayment: document.querySelector("#fundExtraPayment"),
+  fundDebtType: document.querySelector("#fundDebtType"),
+  monthBriefModal: document.querySelector("#monthBriefModal"),
+  monthBriefForm: document.querySelector("#monthBriefForm"),
+  monthBriefTitle: document.querySelector("#monthBriefTitle"),
+  monthBriefIncome: document.querySelector("#monthBriefIncome"),
+  monthBriefRequired: document.querySelector("#monthBriefRequired"),
+  monthBriefLife: document.querySelector("#monthBriefLife"),
+  monthBriefOverdue: document.querySelector("#monthBriefOverdue"),
+  monthBriefPaused: document.querySelector("#monthBriefPaused"),
+  monthBriefActive: document.querySelector("#monthBriefActive"),
+  monthBriefPreview: document.querySelector("#monthBriefPreview"),
   historyList: document.querySelector("#historyList"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
   resetMenuBtn: document.querySelector("#resetMenuBtn"),
@@ -233,6 +254,7 @@ function createDefaultState() {
     funds: defaultFunds.map((fund) => ({ ...fund })),
     history: [],
     months: [],
+    monthBriefs: {},
     briefing: null,
     profile: {
       login: defaultUserLogin()
@@ -332,6 +354,7 @@ function normalizeState(value) {
     funds: Array.isArray(value?.funds) ? value.funds.map(normalizeFund) : defaultFunds.map((fund) => ({ ...fund })),
     history: Array.isArray(value?.history) ? value.history : [],
     months: Array.isArray(value?.months) ? value.months.map(normalizeMonth).filter(Boolean) : [],
+    monthBriefs: normalizeMonthBriefs(value?.monthBriefs),
     briefing: value?.briefing || null,
     profile: normalizeProfile(value?.profile),
     currentMonthKey: value?.currentMonthKey || monthKeyFromDate(new Date()),
@@ -386,6 +409,33 @@ function normalizeMonth(month) {
   };
 }
 
+function normalizeMonthBriefs(value) {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.fromEntries(Object.entries(value)
+    .map(([key, brief]) => [key, normalizeMonthBrief(brief, key)])
+    .filter(([, brief]) => brief));
+}
+
+function normalizeMonthBrief(brief, key = state.currentMonthKey) {
+  if (!brief || typeof brief !== "object") {
+    return null;
+  }
+
+  return {
+    key: brief.key || key,
+    monthlyIncome: roundMoney(brief.monthlyIncome),
+    requiredPayments: roundMoney(brief.requiredPayments),
+    minimumLifeExpenses: roundMoney(brief.minimumLifeExpenses),
+    hasOverdue: Boolean(brief.hasOverdue),
+    pausedFunds: String(brief.pausedFunds || ""),
+    activeFunds: String(brief.activeFunds || ""),
+    completedAt: brief.completedAt || new Date().toISOString()
+  };
+}
+
 function createId() {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
     return globalThis.crypto.randomUUID();
@@ -395,6 +445,8 @@ function createId() {
 }
 
 function normalizeFund(fund) {
+  const debtBalance = roundMoney(fund.debtBalance ?? (isDebtFund(fund) ? fund.target : 0));
+  const minPayment = roundMoney(fund.minPayment ?? (isDebtFund(fund) ? fund.monthTarget : 0));
   return {
     id: fund.id || createId(),
     name: fund.name || "Новый фонд",
@@ -409,8 +461,22 @@ function normalizeFund(fund) {
     category: normalizeCategory(fund.category || inferFundCategory(fund)),
     description: fund.description || "",
     type: fund.type || "custom",
-    isFrozen: Boolean(fund.isFrozen)
+    isFrozen: Boolean(fund.isFrozen && fund.pauseType !== "system"),
+    pauseType: fund.pauseType === "manual" ? "manual" : null,
+    pauseReason: fund.pauseReason || "",
+    systemPauseDismissedMonths: Array.isArray(fund.systemPauseDismissedMonths) ? fund.systemPauseDismissedMonths : [],
+    debtBalance,
+    annualRate: roundMoney(fund.annualRate ?? fund.interestRate),
+    minPayment,
+    paymentDate: fund.paymentDate || "",
+    hasOverdue: Boolean(fund.hasOverdue),
+    extraPayment: roundMoney(fund.extraPayment),
+    debtType: normalizeDebtType(fund.debtType || fund.type)
   };
+}
+
+function normalizeDebtType(value) {
+  return ["credit_card", "loan", "person", "installment", "other"].includes(value) ? value : "other";
 }
 
 function normalizeCategory(value) {
@@ -786,7 +852,8 @@ function sortedFunds() {
 }
 
 function activeFunds() {
-  return state.funds.filter((fund) => !fund.isFrozen);
+  const finance = calculateMonthlyFinance();
+  return state.funds.filter((fund) => !isFundPaused(fund, finance));
 }
 
 function totalPercent() {
@@ -828,6 +895,166 @@ function parseDecimal(value) {
   const normalized = String(value ?? "").trim().replace(",", ".");
   const number = Number(normalized);
   return Number.isFinite(number) ? number : 0;
+}
+
+function isDebtFund(fund = {}) {
+  const type = String(fund.type || "");
+  return normalizeCategory(fund.category || inferFundCategory(fund)) === "Кредиты"
+    || type.includes("debt")
+    || Number(fund.debtBalance) > 0
+    || Number(fund.annualRate) > 0
+    || Number(fund.minPayment) > 0;
+}
+
+function isRequiredFund(fund = {}) {
+  const category = normalizeCategory(fund.category || inferFundCategory(fund));
+  return ["Кредиты", "Обязательные платежи"].includes(category);
+}
+
+function isProtectedFromSystemPause(fund = {}) {
+  const category = normalizeCategory(fund.category || inferFundCategory(fund));
+  const type = String(fund.type || "");
+  const name = String(fund.name || "").toLowerCase();
+  return isFundListedInMonthBrief(fund, "activeFunds")
+    || isRequiredFund(fund)
+    || ["Жизнь и быт"].includes(category)
+    || type === "life"
+    || name.includes("транспорт")
+    || name.includes("подпис")
+    || name.includes("минималь")
+    || name.includes("комфорт");
+}
+
+function monthBriefNameList(field) {
+  return String(state.monthBriefs?.[state.currentMonthKey]?.[field] || "")
+    .split(/[,;\n]/)
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isFundListedInMonthBrief(fund, field) {
+  const name = String(fund?.name || "").trim().toLowerCase();
+  if (!name) {
+    return false;
+  }
+  return monthBriefNameList(field).some((item) => item === name);
+}
+
+function debtCalculations(fund = {}) {
+  const debtBalance = roundMoney(fund.debtBalance || (isDebtFund(fund) ? fund.target : 0));
+  const annualRate = roundMoney(fund.annualRate);
+  const minPayment = roundMoney(fund.minPayment || (isDebtFund(fund) ? fund.monthTarget : 0));
+  const monthlyRate = annualRate / 100 / 12;
+  const monthlyInterest = roundMoney(debtBalance * monthlyRate);
+  const principalPayment = roundMoney(minPayment - monthlyInterest);
+  return { debtBalance, annualRate, minPayment, monthlyRate, monthlyInterest, principalPayment };
+}
+
+function currentMonthIncome() {
+  const briefIncome = Number(state.monthBriefs?.[state.currentMonthKey]?.monthlyIncome) || 0;
+  if (briefIncome > 0) {
+    return briefIncome;
+  }
+
+  const briefingIncome = Number(state.briefing?.answers?.monthlyIncome) || 0;
+  if (briefingIncome > 0) {
+    return briefingIncome;
+  }
+
+  return roundMoney(state.history
+    .filter((item) => item.periodKey === state.currentMonthKey && item.type === "Доход")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0));
+}
+
+function requiredPaymentsTotal() {
+  const briefRequired = Number(state.monthBriefs?.[state.currentMonthKey]?.requiredPayments) || 0;
+  if (briefRequired > 0) {
+    return roundMoney(briefRequired);
+  }
+
+  return roundMoney(state.funds
+    .filter(isRequiredFund)
+    .reduce((sum, fund) => sum + Number(fund.minPayment || fund.monthTarget || 0), 0));
+}
+
+function minimumLifeExpensesTotal() {
+  const briefLife = Number(state.monthBriefs?.[state.currentMonthKey]?.minimumLifeExpenses) || 0;
+  if (briefLife > 0) {
+    return roundMoney(briefLife);
+  }
+
+  return roundMoney(state.funds
+    .filter((fund) => normalizeCategory(fund.category) === "Жизнь и быт")
+    .reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0));
+}
+
+function monthHasOverdue() {
+  return Boolean(state.monthBriefs?.[state.currentMonthKey]?.hasOverdue)
+    || state.funds.some((fund) => Boolean(fund.hasOverdue));
+}
+
+function calculateMonthlyFinance() {
+  const monthlyIncome = roundMoney(currentMonthIncome());
+  const requiredPayments = requiredPaymentsTotal();
+  const minimumLifeExpenses = minimumLifeExpensesTotal();
+  const requiredPercent = monthlyIncome > 0 ? roundMoney(requiredPayments / monthlyIncome * 100) : requiredPayments > 0 ? 100 : 0;
+  const hasOverdue = monthHasOverdue();
+  const mode = hasOverdue || requiredPercent >= 70
+    ? "Антикризисный"
+    : requiredPercent >= 50
+      ? "Стабилизация"
+      : "Развитие";
+  const freeBalance = roundMoney(monthlyIncome - requiredPayments - minimumLifeExpenses);
+  const systemPausedFunds = state.funds.filter((fund) => isSystemPauseRecommended(fund, mode));
+
+  return {
+    monthlyIncome,
+    requiredPayments,
+    minimumLifeExpenses,
+    requiredPercent,
+    hasOverdue,
+    mode,
+    freeBalance,
+    systemPausedFunds
+  };
+}
+
+function isSystemPauseRecommended(fund, mode = calculateMonthlyFinance().mode) {
+  if (isProtectedFromSystemPause(fund)) {
+    return false;
+  }
+
+  return isFundListedInMonthBrief(fund, "pausedFunds")
+    || (mode === "Антикризисный"
+      && Number(fund.priority) >= 1
+      && Number(fund.priority) <= 3);
+}
+
+function isSystemPauseDismissed(fund) {
+  return Array.isArray(fund.systemPauseDismissedMonths)
+    && fund.systemPauseDismissedMonths.includes(state.currentMonthKey);
+}
+
+function isFundSystemPaused(fund, finance = calculateMonthlyFinance()) {
+  return isSystemPauseRecommended(fund, finance.mode) && !isSystemPauseDismissed(fund);
+}
+
+function isFundPaused(fund, finance = calculateMonthlyFinance()) {
+  return Boolean(fund.isFrozen) || isFundSystemPaused(fund, finance);
+}
+
+function systemPauseReason(fund, finance = calculateMonthlyFinance()) {
+  const overdueDebt = state.funds.find((item) => isDebtFund(item) && item.hasOverdue);
+  if (overdueDebt) {
+    return `антикризисный режим. Сначала закройте просрочку: ${overdueDebt.name}.`;
+  }
+  const dangerDebt = state.funds
+    .filter(isDebtFund)
+    .sort((a, b) => Number(b.annualRate || 0) - Number(a.annualRate || 0))[0];
+  if (dangerDebt && Number(dangerDebt.annualRate || 0) > 40) {
+    return `антикризисный режим. Сначала снизьте нагрузку по долгу: ${dangerDebt.name}.`;
+  }
+  return `${finance.mode.toLowerCase()} режим. Сначала защитите обязательные платежи.`;
 }
 
 function progressOf(fund) {
@@ -886,6 +1113,9 @@ function render() {
 
   renderAccount();
   renderMonthSummary();
+  renderFinanceMode();
+  renderFreeBalance();
+  renderFinanceWarnings();
   renderRequiredIncome();
   renderOverflow();
   renderFunds();
@@ -894,6 +1124,107 @@ function render() {
   renderHistory();
   saveState();
   maybeOfferBriefing();
+}
+
+function renderFinanceMode() {
+  if (!els.financeModePanel) {
+    return;
+  }
+
+  const finance = calculateMonthlyFinance();
+  const pausedFunds = finance.systemPausedFunds
+    .filter((fund) => isFundSystemPaused(fund, finance))
+    .map((fund) => fund.name);
+  els.financeModePanel.className = `finance-mode-panel mode-${finance.mode === "Антикризисный" ? "crisis" : finance.mode === "Стабилизация" ? "stable" : "growth"}`;
+  els.financeModePanel.innerHTML = `
+    <div>
+      <span>Текущий режим</span>
+      <strong>${escapeHtml(finance.mode)}</strong>
+      <p>${finance.requiredPercent}% дохода уходит на обязательные платежи.</p>
+    </div>
+    <div>
+      <span>Доход месяца</span>
+      <strong>${money(finance.monthlyIncome)}</strong>
+      <p>Обязательные платежи: ${money(finance.requiredPayments)}. Минимум жизни: ${money(finance.minimumLifeExpenses)}.</p>
+    </div>
+    <div>
+      <span>Автопаузы</span>
+      <strong>${pausedFunds.length}</strong>
+      <p>${pausedFunds.length
+        ? `Система временно заморозила: ${escapeHtml(pausedFunds.join(", "))}.`
+        : "Системных пауз на этот месяц нет."}</p>
+    </div>
+  `;
+}
+
+function renderFreeBalance() {
+  if (!els.freeBalancePanel) {
+    return;
+  }
+
+  const finance = calculateMonthlyFinance();
+  els.freeBalancePanel.className = `free-balance-panel ${finance.freeBalance < 0 ? "is-negative" : "is-positive"}`;
+  els.freeBalancePanel.innerHTML = finance.freeBalance < 0
+    ? `
+      <strong>Свободного остатка нет: ${money(finance.freeBalance)}.</strong>
+      <p>Сейчас нельзя планировать новые покупки. Нужен дополнительный доход, перенос платежа или реструктуризация.</p>
+    `
+    : `
+      <strong>Свободный остаток: ${money(finance.freeBalance)}.</strong>
+      <p>Эти деньги можно распределить между резервом, целями и досрочным погашением долгов.</p>
+    `;
+}
+
+function financeWarnings() {
+  const finance = calculateMonthlyFinance();
+  const warnings = [];
+  const percent = totalPercent();
+  if (!isDistributionValid()) {
+    warnings.push(`Распределение невозможно: сумма процентов = ${percent}%. Нужно 100%.`);
+  }
+  if (finance.requiredPercent >= 70) {
+    warnings.push(`Высокая долговая нагрузка: ${finance.requiredPercent}%. Включен антикризисный режим.`);
+  }
+
+  state.funds.filter(isDebtFund).forEach((fund) => {
+    const debt = debtCalculations(fund);
+    if (debt.annualRate > 40) {
+      warnings.push(`Опасный долг: ${escapeHtml(fund.name)} со ставкой выше 40% годовых. Проверьте возможность реструктуризации.`);
+    }
+    if (debt.minPayment > 0 && debt.debtBalance > 0 && (debt.principalPayment <= 0 || debt.principalPayment < debt.minPayment * 0.3)) {
+      warnings.push(`Платеж ${money(debt.minPayment)} по ${escapeHtml(fund.name)} почти не снижает долг. При ставке ${debt.annualRate}% долг ${money(debt.debtBalance)} начисляет около ${money(debt.monthlyInterest)} процентов в месяц. Минимальный платеж может не уменьшать тело долга.`);
+    }
+  });
+
+  if (finance.mode === "Антикризисный") {
+    state.funds
+      .filter((fund) => isSystemPauseRecommended(fund, finance.mode) && isSystemPauseDismissed(fund) && Number(fund.percent || 0) > 0)
+      .forEach((fund) => {
+        warnings.push(`Фонд низкого приоритета: ${escapeHtml(fund.name)}. В антикризисном режиме лучше направить деньги в проблемный долг.`);
+      });
+  }
+
+  return [...new Set(warnings)];
+}
+
+function renderFinanceWarnings() {
+  if (!els.financeWarningsPanel) {
+    return;
+  }
+
+  const warnings = financeWarnings();
+  els.financeWarningsPanel.classList.toggle("is-hidden", !warnings.length);
+  els.financeWarningsPanel.innerHTML = warnings.length
+    ? `
+      <div class="finance-warnings-head">
+        <span>Финансовые предупреждения</span>
+        <strong>${warnings.length}</strong>
+      </div>
+      <ul>
+        ${warnings.map((warning) => `<li>${warning}</li>`).join("")}
+      </ul>
+    `
+    : "";
 }
 
 function renderAccount() {
@@ -935,7 +1266,8 @@ function renderMonthSummary() {
 }
 
 function requiredIncomeSummary(includeFrozen = false) {
-  const funds = state.funds.filter((fund) => includeFrozen || !fund.isFrozen);
+  const finance = calculateMonthlyFinance();
+  const funds = state.funds.filter((fund) => includeFrozen || !isFundPaused(fund, finance));
   const buckets = REQUIRED_INCOME_BUCKETS.map((bucket) => {
     const amount = funds
       .filter((fund) => bucket.categories.includes(normalizeCategory(fund.category)))
@@ -956,7 +1288,8 @@ function renderRequiredIncome() {
 
   const active = requiredIncomeSummary(false);
   const withFrozen = requiredIncomeSummary(true);
-  const hasFrozen = state.funds.some((fund) => fund.isFrozen);
+  const finance = calculateMonthlyFinance();
+  const hasFrozen = state.funds.some((fund) => isFundPaused(fund, finance));
   els.requiredIncomePanel.innerHTML = `
     <div class="required-income-head">
       <div>
@@ -1205,10 +1538,11 @@ function fundsByCategory() {
 }
 
 function groupTotals(funds) {
+  const finance = calculateMonthlyFinance();
   return {
     balance: roundMoney(funds.reduce((sum, fund) => sum + Number(fund.balance || 0), 0)),
     monthTarget: roundMoney(funds.reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0)),
-    percent: roundMoney(funds.filter((fund) => !fund.isFrozen).reduce((sum, fund) => sum + Number(fund.percent || 0), 0))
+    percent: roundMoney(funds.filter((fund) => !isFundPaused(fund, finance)).reduce((sum, fund) => sum + Number(fund.percent || 0), 0))
   };
 }
 
@@ -1260,20 +1594,32 @@ function renderFundCard(fund) {
   const progress = monthProgressOf(fund);
   const complete = fundIsComplete(fund);
   const lastTopUp = lastTopUpFor(fund);
+  const finance = calculateMonthlyFinance();
+  const isSystemPaused = isFundSystemPaused(fund, finance);
+  const paused = isFundPaused(fund, finance);
+  const pauseLabel = isSystemPaused ? "На паузе системой" : "На паузе вручную";
+  const pauseReason = isSystemPaused ? systemPauseReason(fund, finance) : fund.pauseReason || "ручная пауза пользователя.";
   return `
-      <article class="fund-card ${fund.isFrozen ? "is-frozen" : ""} ${complete ? "is-complete" : ""}" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
+      <article class="fund-card ${paused ? "is-frozen" : ""} ${isSystemPaused ? "is-system-paused" : ""} ${complete ? "is-complete" : ""}" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
         <div class="fund-head">
           <div class="fund-icon">${escapeHtml(fund.icon)}</div>
           <div class="fund-title">
             <h3>${escapeHtml(fund.name)}</h3>
-            <div class="fund-meta">${escapeHtml(fund.category)} · ${fund.isFrozen ? "заморожен" : `${fund.percent}% дохода · месяц`}</div>
+            <div class="fund-meta">${escapeHtml(fund.category)} · ${paused ? "заморожен" : `${fund.percent}% дохода · месяц`}</div>
           </div>
           <div class="fund-actions">
             ${complete ? `<span class="complete-check" aria-label="Готово">✓</span>` : ""}
+            ${isSystemPaused ? `<button class="icon-btn" type="button" data-dismiss-system-pause="${fund.id}" aria-label="Снять системную паузу с ${escapeHtml(fund.name)}">▶</button>` : ""}
             <button class="icon-btn" type="button" data-edit="${fund.id}" aria-label="Редактировать ${escapeHtml(fund.name)}">✎</button>
             <button class="icon-btn" type="button" data-delete="${fund.id}" aria-label="Удалить ${escapeHtml(fund.name)}">×</button>
           </div>
         </div>
+        ${paused ? `
+          <div class="fund-pause-note">
+            <strong>${pauseLabel}</strong>
+            <span>Причина: ${escapeHtml(pauseReason)}</span>
+          </div>
+        ` : ""}
         <div class="fund-money">
           <div>
             <span>За месяц</span>
@@ -1296,7 +1642,7 @@ function renderFundCard(fund) {
           <span>Осталось ${money(monthRemainingOf(fund))}</span>
         </div>
         <div class="fund-footer">
-          <span>${fund.isFrozen ? "не участвует в распределении" : `${fund.percent}% от доходов`}</span>
+          <span>${paused ? "не участвует в распределении" : `${fund.percent}% от доходов`}</span>
           <span>Приоритет ${fund.priority}</span>
         </div>
       </article>
@@ -1305,7 +1651,8 @@ function renderFundCard(fund) {
 
 function renderDistribution() {
   const funds = sortedFunds();
-  const active = funds.filter((fund) => !fund.isFrozen);
+  const finance = calculateMonthlyFinance();
+  const active = funds.filter((fund) => !isFundPaused(fund, finance));
   let cursor = 0;
   const slices = active.map((fund) => {
     const from = cursor;
@@ -1320,7 +1667,7 @@ function renderDistribution() {
     <div class="legend-row">
       <i class="legend-dot" style="--dot: ${fund.color}"></i>
       <span>${escapeHtml(fund.name)}</span>
-      <strong>${fund.isFrozen ? "пауза" : `${fund.percent}%`}</strong>
+      <strong>${isFundPaused(fund, finance) ? "пауза" : `${fund.percent}%`}</strong>
     </div>
   `).join("");
 }
@@ -1411,6 +1758,10 @@ function distributeIncome(amount, comment) {
   }
 
   const fundsToAllocate = activeFunds();
+  const finance = calculateMonthlyFinance();
+  if (finance.mode === "Антикризисный" && fundsToAllocate.some((fund) => isSystemPauseRecommended(fund, finance.mode))) {
+    showToast("Фонд низкого приоритета. В антикризисном режиме лучше направить деньги в проблемный долг.");
+  }
   const allocations = allocateIncomeWithMonthlyLimits(amount, fundsToAllocate);
   allocations.forEach((allocation) => {
     const fund = state.funds.find((item) => item.id === allocation.fundId);
@@ -1522,6 +1873,13 @@ function openFundModal(fund) {
   els.fundPriority.value = fund?.priority ?? state.funds.length + 1;
   els.fundCategory.value = normalizeCategory(fund?.category || inferFundCategory(fund));
   els.fundDescription.value = fund?.description || "";
+  els.fundDebtBalance.value = fund?.debtBalance ?? "";
+  els.fundAnnualRate.value = fund?.annualRate ?? "";
+  els.fundMinPayment.value = fund?.minPayment ?? "";
+  els.fundPaymentDate.value = fund?.paymentDate || "";
+  els.fundHasOverdue.checked = Boolean(fund?.hasOverdue);
+  els.fundExtraPayment.value = fund?.extraPayment ?? "";
+  els.fundDebtType.value = normalizeDebtType(fund?.debtType || fund?.type);
   els.fundModal.showModal();
 }
 
@@ -1531,6 +1889,11 @@ function saveFundFromForm() {
   }
 
   const previousFund = state.funds.find((fund) => fund.id === els.fundId.value);
+  const category = normalizeCategory(els.fundCategory.value);
+  const debtBalance = roundMoney(els.fundDebtBalance.value);
+  const annualRate = roundMoney(els.fundAnnualRate.value);
+  const minPayment = roundMoney(els.fundMinPayment.value);
+  const isDebt = category === "Кредиты" || debtBalance > 0 || annualRate > 0 || minPayment > 0;
   const data = {
     id: els.fundId.value || createId(),
     name: els.fundName.value.trim(),
@@ -1542,10 +1905,20 @@ function saveFundFromForm() {
     target: roundMoney(els.fundTarget.value),
     percent: roundMoney(els.fundPercent.value),
     priority: Number(els.fundPriority.value) || 1,
-    category: normalizeCategory(els.fundCategory.value),
+    category,
     description: els.fundDescription.value.trim(),
-    type: previousFund?.type || "custom",
-    isFrozen: Boolean(previousFund?.isFrozen)
+    type: isDebt ? "debt" : previousFund?.type || "custom",
+    isFrozen: Boolean(previousFund?.isFrozen),
+    pauseType: previousFund?.pauseType || null,
+    pauseReason: previousFund?.pauseReason || "",
+    systemPauseDismissedMonths: previousFund?.systemPauseDismissedMonths || [],
+    debtBalance,
+    annualRate,
+    minPayment,
+    paymentDate: els.fundPaymentDate.value.trim(),
+    hasOverdue: els.fundHasOverdue.checked,
+    extraPayment: roundMoney(els.fundExtraPayment.value),
+    debtType: normalizeDebtType(els.fundDebtType.value)
   };
 
   const index = state.funds.findIndex((fund) => fund.id === data.id);
@@ -1588,6 +1961,34 @@ function deleteFund(id) {
   render();
 }
 
+function dismissSystemPause(id) {
+  if (!canChangeData()) {
+    return;
+  }
+
+  const fund = state.funds.find((item) => item.id === id);
+  if (!fund) {
+    return;
+  }
+
+  const confirmed = confirm("Фонд низкого приоритета. В антикризисном режиме лучше направить деньги в проблемный долг. Снять системную паузу на этот месяц?");
+  if (!confirmed) {
+    return;
+  }
+
+  fund.systemPauseDismissedMonths = [...new Set([...(fund.systemPauseDismissedMonths || []), state.currentMonthKey])];
+  state.history.push({
+    id: createId(),
+    date: new Date().toISOString(),
+    type: "Система",
+    amount: 0,
+    periodKey: state.currentMonthKey,
+    comment: `Системная пауза снята с фонда «${fund.name}» на текущий месяц`
+  });
+  showToast("Системная пауза снята на текущий месяц.");
+  render();
+}
+
 function openFundDetails(fund) {
   if (!fund) {
     return;
@@ -1595,6 +1996,10 @@ function openFundDetails(fund) {
 
   const totalProgress = progressOf(fund);
   const monthProgress = monthProgressOf(fund);
+  const debt = debtCalculations(fund);
+  const finance = calculateMonthlyFinance();
+  const paused = isFundPaused(fund, finance);
+  const isSystemPaused = isFundSystemPaused(fund, finance);
   els.fundDetailContent.innerHTML = `
     <div class="modal-head">
       <div class="fund-detail-title">
@@ -1655,10 +2060,46 @@ function openFundDetails(fund) {
       </div>
     </div>
 
+    ${isDebtFund(fund) ? `
+      <div class="detail-grid debt-detail-grid">
+        <div class="detail-box">
+          <span>Остаток долга</span>
+          <strong>${money(debt.debtBalance)}</strong>
+        </div>
+        <div class="detail-box">
+          <span>Ставка</span>
+          <strong>${debt.annualRate}%</strong>
+        </div>
+        <div class="detail-box">
+          <span>Проценты в месяц</span>
+          <strong>${money(debt.monthlyInterest)}</strong>
+        </div>
+        <div class="detail-box">
+          <span>Минимальный платеж</span>
+          <strong>${money(debt.minPayment)}</strong>
+        </div>
+        <div class="detail-box">
+          <span>Гасится тело</span>
+          <strong>${money(debt.principalPayment)}</strong>
+        </div>
+        <div class="detail-box">
+          <span>Дата платежа</span>
+          <strong>${escapeHtml(fund.paymentDate || "-")}</strong>
+        </div>
+      </div>
+    ` : ""}
+
+    ${paused ? `
+      <div class="detail-warning">
+        <strong>${isSystemPaused ? "На паузе системой" : "На паузе вручную"}</strong>
+        <span>Причина: ${escapeHtml(isSystemPaused ? systemPauseReason(fund, finance) : fund.pauseReason || "ручная пауза пользователя.")}</span>
+      </div>
+    ` : ""}
+
     <p class="detail-description">${escapeHtml(fund.description || "Без описания")}</p>
     <div class="detail-row">
       <span>${forecastFor(fund)}</span>
-      <span>${escapeHtml(fund.category)} · ${fund.isFrozen ? "заморожен" : `${fund.percent}% дохода`} · приоритет ${fund.priority}</span>
+      <span>${escapeHtml(fund.category)} · ${paused ? "заморожен" : `${fund.percent}% дохода`} · приоритет ${fund.priority}</span>
     </div>
   `;
   els.fundDetailModal.showModal();
@@ -1721,6 +2162,103 @@ function addMonth() {
   state.currentMonthKey = nextMonthKey(state.currentMonthKey);
   state.funds = state.funds.map((fund) => ({ ...fund, monthBalance: 0 }));
   showToast(`Месяц ${closedMonth.label} сохранен. Открыт ${monthLabel(state.currentMonthKey)}.`);
+  render();
+  openMonthBrief();
+}
+
+function defaultMonthBrief(key = state.currentMonthKey) {
+  return {
+    key,
+    monthlyIncome: currentMonthIncome(),
+    requiredPayments: requiredPaymentsTotal(),
+    minimumLifeExpenses: minimumLifeExpensesTotal(),
+    hasOverdue: monthHasOverdue(),
+    pausedFunds: calculateMonthlyFinance().systemPausedFunds.map((fund) => fund.name).join(", "),
+    activeFunds: state.funds.filter(isProtectedFromSystemPause).map((fund) => fund.name).join(", "),
+    completedAt: new Date().toISOString()
+  };
+}
+
+function openMonthBrief() {
+  if (!els.monthBriefModal) {
+    return;
+  }
+
+  const existing = state.monthBriefs?.[state.currentMonthKey] || defaultMonthBrief();
+  els.monthBriefTitle.textContent = `Мини-бриф: ${monthLabel(state.currentMonthKey)}`;
+  els.monthBriefIncome.value = existing.monthlyIncome || "";
+  els.monthBriefRequired.value = existing.requiredPayments || "";
+  els.monthBriefLife.value = existing.minimumLifeExpenses || "";
+  els.monthBriefOverdue.value = existing.hasOverdue ? "true" : "false";
+  els.monthBriefPaused.value = existing.pausedFunds || "";
+  els.monthBriefActive.value = existing.activeFunds || "";
+  renderMonthBriefPreview();
+  els.monthBriefModal.showModal();
+}
+
+function collectMonthBriefData() {
+  return normalizeMonthBrief({
+    key: state.currentMonthKey,
+    monthlyIncome: roundMoney(els.monthBriefIncome.value),
+    requiredPayments: roundMoney(els.monthBriefRequired.value),
+    minimumLifeExpenses: roundMoney(els.monthBriefLife.value),
+    hasOverdue: els.monthBriefOverdue.value === "true",
+    pausedFunds: els.monthBriefPaused.value.trim(),
+    activeFunds: els.monthBriefActive.value.trim(),
+    completedAt: new Date().toISOString()
+  }, state.currentMonthKey);
+}
+
+function previewFinanceForBrief(brief) {
+  const monthlyIncome = Number(brief.monthlyIncome) || 0;
+  const requiredPayments = Number(brief.requiredPayments) || 0;
+  const minimumLifeExpenses = Number(brief.minimumLifeExpenses) || 0;
+  const requiredPercent = monthlyIncome > 0 ? roundMoney(requiredPayments / monthlyIncome * 100) : requiredPayments > 0 ? 100 : 0;
+  const mode = brief.hasOverdue || requiredPercent >= 70
+    ? "Антикризисный"
+    : requiredPercent >= 50
+      ? "Стабилизация"
+      : "Развитие";
+  return {
+    mode,
+    requiredPercent,
+    freeBalance: roundMoney(monthlyIncome - requiredPayments - minimumLifeExpenses)
+  };
+}
+
+function renderMonthBriefPreview() {
+  if (!els.monthBriefPreview) {
+    return;
+  }
+
+  const finance = previewFinanceForBrief(collectMonthBriefData());
+  els.monthBriefPreview.innerHTML = `
+    <div>
+      <span>Режим после брифа</span>
+      <strong>${escapeHtml(finance.mode)}</strong>
+    </div>
+    <div>
+      <span>Нагрузка</span>
+      <strong>${finance.requiredPercent}%</strong>
+    </div>
+    <div>
+      <span>Свободный остаток</span>
+      <strong>${money(finance.freeBalance)}</strong>
+    </div>
+  `;
+}
+
+function saveMonthBrief() {
+  if (!canChangeData()) {
+    return;
+  }
+
+  state.monthBriefs = {
+    ...(state.monthBriefs || {}),
+    [state.currentMonthKey]: collectMonthBriefData()
+  };
+  els.monthBriefModal.close();
+  showToast("Мини-бриф месяца сохранен.");
   render();
 }
 
@@ -2002,7 +2540,7 @@ function collectBriefingData() {
     incomeType: els.briefIncomeType.value,
     incomeFrequency: els.briefIncomeFrequency.value,
     requiredPayments: collectBriefingRows(els.requiredPaymentList, ["amount"]),
-    debts: collectBriefingRows(els.debtList, ["balance", "monthlyPayment"]),
+    debts: collectBriefingRows(els.debtList, ["balance", "monthlyPayment", "interestRate"]),
     lifeExpenses,
     comfortExpenses: collectBriefingRows(els.comfortList, ["amount"]),
     currentReserve: roundMoney(els.briefCurrentReserve.value),
@@ -2043,7 +2581,17 @@ function createBriefFund(data) {
     category: normalizeCategory(data.category || inferFundCategory(data)),
     block: data.block,
     weight: Math.max(1, Number(data.weight) || 1),
-    isFrozen: Boolean(data.isFrozen)
+    isFrozen: Boolean(data.isFrozen),
+    pauseType: data.pauseType || null,
+    pauseReason: data.pauseReason || "",
+    systemPauseDismissedMonths: [],
+    debtBalance: roundMoney(data.debtBalance),
+    annualRate: roundMoney(data.annualRate),
+    minPayment: roundMoney(data.minPayment),
+    paymentDate: data.paymentDate || "",
+    hasOverdue: Boolean(data.hasOverdue),
+    extraPayment: roundMoney(data.extraPayment),
+    debtType: normalizeDebtType(data.debtType)
   };
 }
 
@@ -2170,6 +2718,16 @@ function buildBriefingResult(data) {
       monthTarget: debt.monthlyPayment || 0,
       target: debt.balance || debt.monthlyPayment || 0,
       weight: debt.monthlyPayment || debt.balance || 1,
+      debtBalance: debt.balance || 0,
+      annualRate: debt.interestRate || 0,
+      minPayment: debt.monthlyPayment || 0,
+      hasOverdue: debt.hasOverdue,
+      debtType: {
+        "Кредитная карта": "credit_card",
+        "Кредит": "loan",
+        "Долг человеку": "person",
+        "Рассрочка": "installment"
+      }[debt.type] || "other",
       description: `${debt.type || "Долг"}${debt.hasOverdue ? " с просрочкой" : ""}.`
     }));
   });
@@ -2287,8 +2845,17 @@ function buildBriefingResult(data) {
     return blocks;
   }, {});
   const shares = blockSharesFor(mode.name, mode.requiredPercent, activeBlocks);
-  const finalFunds = assignBriefingPercents(funds, shares);
-  const frozenCount = finalFunds.filter((fund) => fund.isFrozen).length;
+  const finalFunds = assignBriefingPercents(funds, shares).map((fund) => (
+    mode.name === "Антикризисный" && fund.isFrozen
+      ? {
+          ...fund,
+          isFrozen: false,
+          pauseType: "system",
+          pauseReason: "антикризисный режим"
+        }
+      : fund
+  ));
+  const frozenCount = finalFunds.filter((fund) => isSystemPauseRecommended(fund, mode.name)).length;
   const recommendations = [
     mode.name === "Антикризисный"
       ? "Сначала защищаем обязательные платежи и проблемные долги. Цели с приоритетом 1-3 временно поставлены на паузу."
@@ -2546,6 +3113,21 @@ els.addFundBtn.addEventListener("click", () => openFundModal());
 
 els.addMonthBtn.addEventListener("click", addMonth);
 
+els.editMonthBriefBtn?.addEventListener("click", openMonthBrief);
+
+els.monthBriefForm?.addEventListener("input", renderMonthBriefPreview);
+
+els.monthBriefForm?.addEventListener("change", renderMonthBriefPreview);
+
+els.monthBriefForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (event.submitter?.value === "cancel") {
+    els.monthBriefModal.close();
+    return;
+  }
+  saveMonthBrief();
+});
+
 els.briefingBackBtn.addEventListener("click", () => moveBriefingStep(-1));
 
 els.briefingNextBtn.addEventListener("click", () => moveBriefingStep(1));
@@ -2625,6 +3207,7 @@ els.fundGrid.addEventListener("click", (event) => {
   const group = event.target.closest("[data-toggle-group]")?.dataset.toggleGroup;
   const editId = event.target.closest("[data-edit]")?.dataset.edit;
   const deleteId = event.target.closest("[data-delete]")?.dataset.delete;
+  const dismissSystemPauseId = event.target.closest("[data-dismiss-system-pause]")?.dataset.dismissSystemPause;
   const cardId = event.target.closest("[data-fund-card]")?.dataset.fundCard;
 
   if (group) {
@@ -2644,6 +3227,11 @@ els.fundGrid.addEventListener("click", (event) => {
 
   if (deleteId) {
     deleteFund(deleteId);
+    return;
+  }
+
+  if (dismissSystemPauseId) {
+    dismissSystemPause(dismissSystemPauseId);
     return;
   }
 
