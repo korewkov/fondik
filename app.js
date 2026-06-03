@@ -134,6 +134,8 @@ let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KE
 let collapsedFinancePanels = readCollapsedFinancePanels();
 let isDistributionExpanded = readBooleanPreference(DISTRIBUTION_EXPANDED_KEY);
 let areWarningsExpanded = false;
+let heroSlideIndex = 0;
+let heroSliderTimer = null;
 collapsedFinancePanels.add("mode");
 const collapsedCategories = new Set();
 const isPrivateAppPage = window.location.pathname.endsWith("app.html");
@@ -178,6 +180,9 @@ const els = {
   percentWarning: document.querySelector("#percentWarning"),
   fundGrid: document.querySelector("#fundGrid"),
   monthSummaryCard: document.querySelector("#monthSummaryCard"),
+  heroSlider: document.querySelector("#dashboardHeroSlider"),
+  heroSliderTrack: document.querySelector("#heroSliderTrack"),
+  heroSliderDots: document.querySelector("#heroSliderDots"),
   financeModePanel: document.querySelector("#financeModePanel"),
   freeBalancePanel: document.querySelector("#freeBalancePanel"),
   financeWarningsPanel: document.querySelector("#financeWarningsPanel"),
@@ -1525,25 +1530,179 @@ function renderMonthSummary() {
   const active = activeFunds();
   const monthTarget = active.reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0);
   const monthBalance = active.reduce((sum, fund) => sum + Number(fund.monthBalance || 0), 0);
-  const remaining = Math.max(0, roundMoney(monthTarget - monthBalance));
   const progress = monthTarget ? Math.min(100, Math.round(monthBalance / monthTarget * 100)) : 0;
-  els.monthSummaryCard.innerHTML = `
-    <div class="kpi-card kpi-required">
-      <span>Обязательные платежи</span>
-      <strong>${money(finance.requiredPayments)}</strong>
-      <small>${finance.requiredPercent}% от дохода</small>
-    </div>
-    <div class="kpi-card ${finance.freeBalance < 0 ? "kpi-negative" : "kpi-positive"}">
-      <span>Свободный остаток</span>
-      <strong>${money(finance.freeBalance)}</strong>
-      <small>на этот месяц</small>
-    </div>
-    <div class="kpi-card kpi-progress">
-      <span>Прогресс</span>
-      <strong>${progress}%</strong>
-      <small>выполнено</small>
-    </div>
-  `;
+  els.monthSummaryCard.innerHTML = "";
+  renderHeroSlider({ finance, progress });
+}
+
+function heroSlidesFor({ finance, progress }) {
+  const warnings = financeWarnings();
+  const distributionValid = isDistributionValid();
+  const active = activeFunds();
+  const activeFundsCount = active.length;
+  const monthTarget = active.reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0);
+  const monthBalance = active.reduce((sum, fund) => sum + Number(fund.monthBalance || 0), 0);
+  const required = requiredIncomeSummary(false);
+  return [
+    {
+      key: "required",
+      tone: "blue",
+      illustration: "obligations-stack",
+      eyebrow: "Обязательства",
+      title: money(finance.requiredPayments),
+      text: `${finance.requiredPercent}% дохода уже занято обязательными платежами.`,
+      meta: "Иллюстрация: календарь платежей, чек-лист, синие акценты",
+      details: [
+        `Доход месяца: ${money(finance.monthlyIncome)}`,
+        `Обязательные платежи: ${money(finance.requiredPayments)}`,
+        `Минимум на жизнь: ${money(finance.minimumLifeExpenses)}`,
+        `Нужный доход по активным фондам: ${money(required.total)}`
+      ],
+      action: "Показать расчет дохода",
+      actionType: "required-income"
+    },
+    {
+      key: finance.freeBalance < 0 ? "free-negative" : "free-positive",
+      tone: finance.freeBalance < 0 ? "red" : "green",
+      illustration: finance.freeBalance < 0 ? "cashflow-alert" : "cashflow-safe",
+      eyebrow: "Свободный остаток",
+      title: money(finance.freeBalance),
+      text: finance.freeBalance < 0 ? "Месяц требует паузы и аккуратного перераспределения." : "Есть пространство для резерва, целей или досрочного платежа.",
+      meta: "Иллюстрация: кошелек и поток денег, состояние зависит от остатка",
+      details: [
+        `Доход: ${money(finance.monthlyIncome)}`,
+        `Обязательства: ${money(finance.requiredPayments)}`,
+        `Минимум на жизнь: ${money(finance.minimumLifeExpenses)}`,
+        finance.freeBalance < 0 ? "Рекомендация: временно остановить низкие приоритеты." : "Рекомендация: направить остаток в резерв, цель или досрочный платеж."
+      ]
+    },
+    {
+      key: "progress",
+      tone: progress >= 70 ? "green" : "violet",
+      illustration: progress >= 70 ? "goal-finish" : "goal-path",
+      eyebrow: "Прогресс месяца",
+      title: `${progress}%`,
+      text: progress >= 70 ? "Месячный план почти собран." : "План месяца еще в работе.",
+      meta: "Иллюстрация: дорожка прогресса и цель",
+      details: [
+        `Активных фондов: ${activeFundsCount}`,
+        `Внесено за месяц: ${money(monthBalance)}`,
+        `План месяца: ${money(monthTarget)}`,
+        progress >= 70 ? "Фокус: закрыть хвосты месяца." : "Фокус: распределить ближайшее поступление."
+      ]
+    },
+    {
+      key: "mode",
+      tone: finance.mode === "Антикризисный" ? "red" : finance.mode === "Стабилизация" ? "amber" : "green",
+      illustration: finance.mode === "Антикризисный" ? "crisis-shield" : finance.mode === "Стабилизация" ? "balance-scale" : "growth-rocket",
+      eyebrow: "Режим",
+      title: finance.mode,
+      text: finance.mode === "Антикризисный" ? "Система защищает обязательные платежи и ставит низкие приоритеты на паузу." : "Режим помогает держать баланс между платежами и целями.",
+      meta: "Иллюстрация: щит, весы или рост в зависимости от режима",
+      details: [
+        `Долговая нагрузка: ${finance.requiredPercent}%`,
+        `Просрочки: ${finance.hasOverdue ? "есть" : "нет"}`,
+        `Системных пауз: ${finance.systemPausedFunds.length}`,
+        finance.mode === "Антикризисный" ? "Рекомендация: не размораживать хотелки до стабилизации." : "Рекомендация: проверить приоритеты перед новым месяцем."
+      ]
+    },
+    {
+      key: "warnings",
+      tone: warnings.length ? "amber" : "green",
+      illustration: warnings.length ? "warning-map" : "calm-dashboard",
+      eyebrow: "Предупреждения",
+      title: warnings.length ? `${warnings.length}` : "Нет",
+      text: warnings[0] || "Критичных предупреждений сейчас нет.",
+      meta: "Иллюстрация: сигнальная карточка или спокойная панель",
+      details: warnings.length ? warnings : ["Все ключевые проверки сейчас спокойные."],
+      action: "",
+      actionType: ""
+    },
+    {
+      key: "distribution",
+      tone: distributionValid ? "green" : "amber",
+      illustration: distributionValid ? "distribution-complete" : "distribution-tune",
+      eyebrow: "Распределение",
+      title: `${totalPercent()}%`,
+      text: distributionValid ? "Проценты фондов собраны корректно." : "Проценты нужно довести до 100%.",
+      meta: "Иллюстрация: круг распределения или настройка процентов",
+      details: [
+        `Активных фондов: ${activeFundsCount}`,
+        `Сумма процентов: ${totalPercent()}%`,
+        distributionValid ? "Автораспределение готово к работе." : `Нужно довести до 100%, сейчас ${totalPercent()}%.`,
+        "Подробная диаграмма показывается только когда проценты требуют настройки."
+      ],
+      action: distributionValid ? "" : "Настроить проценты",
+      actionType: distributionValid ? "" : "distribution"
+    }
+  ];
+}
+
+function renderHeroSlider(context) {
+  if (!els.heroSlider || !els.heroSliderTrack || !els.heroSliderDots) {
+    return;
+  }
+
+  const slides = heroSlidesFor(context);
+  heroSlideIndex = slides.length ? heroSlideIndex % slides.length : 0;
+  els.heroSliderTrack.innerHTML = slides.map((slide, index) => `
+    <article class="hero-slide ${index === heroSlideIndex ? "is-active" : ""} tone-${slide.tone}" data-hero-slide="${index}">
+      <div class="hero-card-inner">
+        <div class="hero-card-face hero-card-front">
+          <div class="hero-slide-copy">
+            <span>${escapeHtml(slide.eyebrow)}</span>
+            <strong>${escapeHtml(slide.title)}</strong>
+            <p>${escapeHtml(slide.text)}</p>
+            <small>${escapeHtml(slide.meta)}</small>
+          </div>
+          <div class="hero-illustration-placeholder" data-illustration="${escapeHtml(slide.illustration)}">
+            <i></i>
+          </div>
+          <button class="ghost-btn compact hero-flip-btn" type="button" data-hero-flip>Подробнее</button>
+        </div>
+        <div class="hero-card-face hero-card-back">
+          <div class="hero-back-copy">
+            <span>${escapeHtml(slide.eyebrow)}</span>
+            <strong>${escapeHtml(slide.title)}</strong>
+            <ul>
+              ${(slide.details || []).map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}
+            </ul>
+          </div>
+          <div class="hero-back-actions">
+            ${slide.action ? `<button class="primary-btn compact" type="button" data-hero-action="${escapeHtml(slide.actionType)}">${escapeHtml(slide.action)}</button>` : ""}
+            <button class="ghost-btn compact hero-flip-btn" type="button" data-hero-flip>Назад</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  `).join("");
+  els.heroSliderDots.innerHTML = slides.map((slide, index) => `
+    <button type="button" class="${index === heroSlideIndex ? "is-active" : ""}" data-hero-slide-dot="${index}" aria-label="${escapeHtml(slide.eyebrow)}"></button>
+  `).join("");
+  scheduleHeroSlider(slides.length);
+}
+
+function showHeroSlide(index) {
+  const count = els.heroSliderTrack?.querySelectorAll("[data-hero-slide]").length || 0;
+  if (!count) {
+    return;
+  }
+  heroSlideIndex = (index + count) % count;
+  els.heroSliderTrack.querySelectorAll("[data-hero-slide]").forEach((slide, slideIndex) => {
+    slide.classList.toggle("is-active", slideIndex === heroSlideIndex);
+  });
+  els.heroSliderDots?.querySelectorAll("[data-hero-slide-dot]").forEach((dot, dotIndex) => {
+    dot.classList.toggle("is-active", dotIndex === heroSlideIndex);
+  });
+  scheduleHeroSlider(count);
+}
+
+function scheduleHeroSlider(count = 0) {
+  window.clearTimeout(heroSliderTimer);
+  if (count <= 1) {
+    return;
+  }
+  heroSliderTimer = window.setTimeout(() => showHeroSlide(heroSlideIndex + 1), 7000);
 }
 
 function requiredIncomeSummary(includeFrozen = false) {
@@ -1861,9 +2020,9 @@ function renderFunds() {
         <button class="fund-group-head" type="button" data-toggle-group="${escapeHtml(category)}" aria-expanded="${!isCollapsed}">
           <div>
             <strong>${escapeHtml(category)}</strong>
-            <span>${groupFunds.length} фондов</span>
           </div>
           <div class="fund-group-stats">
+            <span>${groupFunds.length} фондов</span>
             <span>Цель месяца ${money(totals.monthTarget)}</span>
             <span>${totals.percent}%</span>
           </div>
@@ -3738,7 +3897,47 @@ els.distributionToggleBtn?.addEventListener("click", () => {
   renderDistribution();
 });
 
-els.editMonthBriefBtn?.addEventListener("click", openMonthBrief);
+els.heroSlider?.addEventListener("click", (event) => {
+  const flipButton = event.target.closest("[data-hero-flip]");
+  if (flipButton) {
+    const slide = flipButton.closest("[data-hero-slide]");
+    slide?.classList.toggle("is-flipped");
+    scheduleHeroSlider(0);
+    return;
+  }
+  const action = event.target.closest("[data-hero-action]")?.dataset.heroAction;
+  if (action === "required-income") {
+    isRequiredIncomeHidden = false;
+    writeBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY, false);
+    renderRequiredIncome();
+    els.requiredIncomePanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (action === "warnings") {
+    areWarningsExpanded = true;
+    renderFinanceWarnings();
+    document.querySelector(".dashboard-summary-row")?.classList.remove("is-hidden");
+    els.financeWarningsPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  if (action === "distribution") {
+    els.analyticsPanel?.classList.remove("is-hidden");
+    els.analyticsPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (event.target.closest("[data-hero-slide-prev]")) {
+    showHeroSlide(heroSlideIndex - 1);
+    return;
+  }
+  if (event.target.closest("[data-hero-slide-next]")) {
+    showHeroSlide(heroSlideIndex + 1);
+    return;
+  }
+  const dot = event.target.closest("[data-hero-slide-dot]");
+  if (dot) {
+    showHeroSlide(Number(dot.dataset.heroSlideDot) || 0);
+  }
+});
 
 els.monthBriefForm?.addEventListener("input", renderMonthBriefPreview);
 

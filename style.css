@@ -3940,3 +3940,348 @@ body {
     padding: 10px;
   }
 }
+
+/* Hero flip slider */
+.dashboard-hero-slider {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(260px, auto) auto;
+  gap: 12px;
+  align-items: center;
+  margin: 8px 0 18px;
+  perspective: 1600px;
+}
+
+.hero-slider-track {
+  position: relative;
+  min-height: 260px;
+}
+
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(10px) scale(0.985);
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.hero-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) scale(1);
+}
+
+.hero-card-inner {
+  position: relative;
+  min-height: 260px;
+  transform-style: preserve-3d;
+  transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.hero-slide.is-flipped .hero-card-inner {
+  transform: rotateY(180deg);
+}
+
+.hero-card-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 34%);
+  gap: 18px;
+  align-items: center;
+  min-height: 260px;
+  padding: 24px;
+  border: 1px solid #cfe2f6;
+  border-radius: 18px;
+  overflow: hidden;
+  backface-visibility: hidden;
+  box-shadow: 0 18px 44px rgba(39, 87, 124, 0.12);
+}
+
+.hero-card-front {
+  background:
+    radial-gradient(circle at 76% 34%, rgba(255, 255, 255, 0.82), transparent 29%),
+    linear-gradient(135deg, #f4fbff 0%, #ffffff 54%, #eef7ff 100%);
+}
+
+.hero-card-back {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  background: #ffffff;
+  transform: rotateY(180deg);
+}
+
+.hero-slide.tone-red .hero-card-front {
+  background:
+    radial-gradient(circle at 76% 34%, rgba(255, 236, 240, 0.9), transparent 30%),
+    linear-gradient(135deg, #fff8fb 0%, #ffffff 54%, #fff0f3 100%);
+}
+
+.hero-slide.tone-green .hero-card-front {
+  background:
+    radial-gradient(circle at 76% 34%, rgba(225, 251, 239, 0.92), transparent 30%),
+    linear-gradient(135deg, #f4fff9 0%, #ffffff 54%, #ecfbf4 100%);
+}
+
+.hero-slide.tone-amber .hero-card-front {
+  background:
+    radial-gradient(circle at 76% 34%, rgba(255, 244, 213, 0.95), transparent 30%),
+    linear-gradient(135deg, #fffdf4 0%, #ffffff 54%, #fff7df 100%);
+}
+
+.hero-slide.tone-violet .hero-card-front {
+  background:
+    radial-gradient(circle at 76% 34%, rgba(237, 231, 255, 0.95), transparent 30%),
+    linear-gradient(135deg, #fbf8ff 0%, #ffffff 54%, #f1edff 100%);
+}
+
+.hero-slide-copy {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+  min-width: 0;
+}
+
+.hero-slide-copy span,
+.hero-back-copy span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hero-slide-copy strong {
+  color: var(--ink);
+  font-size: clamp(38px, 5vw, 72px);
+  line-height: 0.95;
+}
+
+.hero-slide-copy p {
+  max-width: 680px;
+  margin: 0;
+  color: #526173;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.hero-slide-copy small {
+  color: #7c8aa0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.hero-illustration-placeholder {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 206px;
+  border: 1px dashed rgba(47, 125, 225, 0.38);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(63, 143, 244, 0.16), rgba(20, 184, 166, 0.16)),
+    rgba(255, 255, 255, 0.56);
+}
+
+.hero-illustration-placeholder::before {
+  content: attr(data-illustration);
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  color: #617089;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.hero-illustration-placeholder i {
+  width: 118px;
+  height: 118px;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 34% 30%, #ffffff 0 18%, transparent 19%),
+    linear-gradient(135deg, #3f8ff4, #14b8a6);
+  box-shadow: 0 18px 34px rgba(47, 125, 225, 0.22);
+  transform: rotate(-8deg);
+}
+
+.hero-flip-btn {
+  position: absolute;
+  left: 24px;
+  bottom: 22px;
+}
+
+.hero-back-copy {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hero-back-copy strong {
+  color: var(--blue-dark);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.hero-back-copy ul {
+  display: grid;
+  gap: 10px;
+  max-height: 176px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.hero-back-copy li {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #e2edf8;
+  border-radius: var(--radius);
+  background: #f8fbff;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.hero-back-actions {
+  display: grid;
+  gap: 10px;
+  align-content: end;
+  justify-items: stretch;
+  min-width: 180px;
+}
+
+.hero-card-back .hero-flip-btn {
+  position: static;
+}
+
+.hero-slider-arrow {
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #c6def4;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--blue-dark);
+  font-size: 28px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(39, 87, 124, 0.1);
+}
+
+.hero-slider-dots {
+  grid-column: 2;
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+}
+
+.hero-slider-dots button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #c8d9eb;
+  cursor: pointer;
+}
+
+.hero-slider-dots button.is-active {
+  width: 28px;
+  background: var(--blue);
+}
+
+/* Group header cleanup */
+.fund-group-head > div:first-child {
+  display: block;
+}
+
+.fund-group-head > div:first-child::before,
+.fund-group:nth-child(2n) .fund-group-head > div:first-child::before,
+.fund-group:nth-child(3n) .fund-group-head > div:first-child::before {
+  content: none;
+  display: none;
+}
+
+.fund-group-head strong {
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1;
+}
+
+.fund-group-stats {
+  align-items: center;
+}
+
+/* Expanded warnings must wrap inside their card */
+.finance-warnings-panel.is-expanded {
+  overflow: visible;
+}
+
+.finance-warnings-panel.is-expanded .finance-warning-summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.finance-warnings-panel.is-expanded .finance-warning-summary p {
+  grid-column: 1 / -1;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.finance-warnings-panel.is-expanded .finance-warning-list {
+  grid-template-columns: 1fr;
+}
+
+.finance-warnings-panel.is-expanded .finance-warning-list li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+@media (max-width: 820px) {
+  .dashboard-hero-slider {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-slider-arrow {
+    position: absolute;
+    top: calc(50% - 34px);
+  }
+
+  .hero-slider-arrow[data-hero-slide-prev] {
+    left: 10px;
+  }
+
+  .hero-slider-arrow[data-hero-slide-next] {
+    right: 10px;
+  }
+
+  .hero-slider-track,
+  .hero-card-inner,
+  .hero-card-face {
+    min-height: 360px;
+  }
+
+  .hero-card-face {
+    grid-template-columns: 1fr;
+    padding: 20px 18px 64px;
+  }
+
+  .hero-illustration-placeholder {
+    min-height: 150px;
+  }
+
+  .hero-back-actions {
+    min-width: 0;
+  }
+
+  .hero-slider-dots {
+    grid-column: 1;
+  }
+}

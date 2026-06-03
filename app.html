@@ -116,6 +116,13 @@
           <button class="primary-btn compact" type="submit">Сохранить</button>
         </form>
 
+        <section class="dashboard-hero-slider" id="dashboardHeroSlider" aria-label="Сводка месяца">
+          <button class="hero-slider-arrow" type="button" data-hero-slide-prev aria-label="Предыдущий слайд">‹</button>
+          <div class="hero-slider-track" id="heroSliderTrack"></div>
+          <button class="hero-slider-arrow" type="button" data-hero-slide-next aria-label="Следующий слайд">›</button>
+          <div class="hero-slider-dots" id="heroSliderDots"></div>
+        </section>
+
         <div class="income-panel">
           <div class="income-copy">
             <span>Новое поступление</span>
@@ -129,7 +136,7 @@
           <div class="warning" id="percentWarning" role="alert"></div>
         </div>
 
-        <div class="dashboard-summary-row">
+        <div class="dashboard-summary-row is-hidden">
           <div class="month-summary-card" id="monthSummaryCard"></div>
           <div class="finance-mode-panel" id="financeModePanel"></div>
           <div class="finance-warnings-panel" id="financeWarningsPanel"></div>
