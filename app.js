@@ -373,18 +373,7 @@ async function loadState(options = {}) {
 }
 
 async function loadLegacyState() {
-  try {
-    const path = `/${LEGACY_STATE_CONFIG.table}?id=eq.${encodeURIComponent(LEGACY_STATE_CONFIG.id)}&select=data&limit=1`;
-    const rows = await supabaseAnonRequest("GET", path);
-    if (!Array.isArray(rows) || !rows.length) {
-      return null;
-    }
-
-    const legacyState = normalizeState(rows[0].data);
-    return isOldExampleState(legacyState) ? null : legacyState;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 function isOldExampleState(value) {
