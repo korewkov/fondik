@@ -1007,12 +1007,14 @@ function renderAuthState() {
   const isSignedIn = Boolean(session?.user?.id);
   els.appLoading?.classList.toggle("is-hidden", isSignedIn);
   els.publicShell?.classList.toggle("is-hidden", isSignedIn);
-  els.appShell.classList.toggle("is-hidden", !isSignedIn);
-  els.authOpenBtn.classList.toggle("is-hidden", isSignedIn);
-  els.userAccountBtn.classList.toggle("is-hidden", !isSignedIn);
-  els.userLogin.textContent = currentUserLogin();
+  els.appShell?.classList.toggle("is-hidden", !isSignedIn);
+  els.authOpenBtn?.classList.toggle("is-hidden", isSignedIn);
+  els.userAccountBtn?.classList.toggle("is-hidden", !isSignedIn);
+  if (els.userLogin) {
+    els.userLogin.textContent = currentUserLogin();
+  }
 
-  if (isSignedIn && els.authModal.open) {
+  if (isSignedIn && els.authModal?.open) {
     els.authModal.close();
   }
 }
@@ -2739,6 +2741,16 @@ async function bootAuthenticatedApp(options = {}) {
     render();
     applyRoute();
   } catch (error) {
+    if (!session?.user?.id) {
+      storageStatus = "Сессия устарела. Войдите заново.";
+      isStorageReady = false;
+      clearSession();
+      if (isPrivateAppPage) {
+        redirectToLogin();
+        return;
+      }
+    }
+
     storageStatus = `Не удалось загрузить данные: ${error.message}`;
     isStorageReady = false;
     showToast(storageStatus);
@@ -2747,6 +2759,27 @@ async function bootAuthenticatedApp(options = {}) {
     applyRoute();
   }
 }
+
+function showBootError(error) {
+  const message = error?.message || String(error || "неизвестная ошибка");
+  const loading = document.querySelector("#appLoading");
+  if (loading) {
+    loading.classList.remove("is-hidden");
+    const text = loading.querySelector("p");
+    if (text) {
+      text.textContent = `Ошибка загрузки кабинета: ${message}`;
+    }
+  }
+  console.error(error);
+}
+
+window.addEventListener("error", (event) => {
+  showBootError(event.error || event.message);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  showBootError(event.reason);
+});
 
 function translateAuthError(message) {
   const lower = message.toLowerCase();
@@ -2765,4 +2798,4 @@ function translateAuthError(message) {
   return `Ошибка авторизации: ${message}`;
 }
 
-initApp();
+initApp().catch(showBootError);
