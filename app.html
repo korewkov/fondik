@@ -398,7 +398,51 @@
       </div>
     </form>
   </dialog>
+<dialog class="auth-modal" id="quickStartModal">
+  <div class="auth-card quick-start-card">
+    <div class="auth-brand">
+      <img class="auth-brand-logo" src="assets/fondik-lockup-slogan.svg" alt="Фондик">
+    </div>
+    <p class="eyebrow">Быстрый старт</p>
+    <h2 class="quick-start-title">Три вопроса — и система всё настроит</h2>
 
+    <div class="quick-start-steps">
+      <div class="quick-start-step is-active" data-qs-step="0">
+        <p class="quick-start-hint">Сколько примерно зарабатываешь в месяц?</p>
+        <input id="qsIncome" type="number" min="0" step="1" placeholder="Например, 65000">
+      </div>
+
+      <div class="quick-start-step" data-qs-step="1">
+        <p class="quick-start-hint">Сколько уходит на долги и обязательные платежи в месяц?</p>
+        <input id="qsObligations" type="number" min="0" step="1" placeholder="Например, 25000">
+      </div>
+
+      <div class="quick-start-step" data-qs-step="2">
+        <p class="quick-start-hint">Есть ли прямо сейчас просроченные долги?</p>
+        <div class="qs-choice-row">
+          <button class="qs-choice-btn" data-qs-choice="true" type="button">Да, есть</button>
+          <button class="qs-choice-btn" data-qs-choice="false" type="button">Нет</button>
+        </div>
+      </div>
+
+      <div class="quick-start-step" data-qs-step="3">
+        <div class="qs-result" id="qsResult"></div>
+      </div>
+    </div>
+
+    <div class="quick-start-actions">
+      <button class="ghost-btn compact" id="qsSkipBtn" type="button">Пропустить</button>
+      <button class="primary-btn compact" id="qsNextBtn" type="button">Дальше →</button>
+      <button class="primary-btn compact is-hidden" id="qsApplyBtn" type="button">Настроить фонды</button>
+    </div>
+
+    <div class="qs-dots">
+      <span class="is-active"></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+</dialog>
   <dialog class="fund-modal briefing-modal" id="briefingModal">
     <form method="dialog" class="modal-card briefing-card" id="briefingForm">
       <div class="briefing-layout">
