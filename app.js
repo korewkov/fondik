@@ -1294,20 +1294,32 @@ function renderFinanceMode() {
     .filter((fund) => isFundSystemPaused(fund, finance))
     .map((fund) => fund.name);
   const collapsed = collapsedFinancePanels.has("mode");
+  const gaugeValue = Math.min(100, Math.max(0, Math.round(finance.requiredPercent)));
+  const heroCopy = finance.mode === "Антикризисный"
+    ? "Система временно замораживает низкие приоритеты, чтобы защитить обязательные платежи."
+    : finance.mode === "Стабилизация"
+      ? "Держим фокус на обязательных платежах и аккуратно двигаем цели."
+      : "Можно активнее пополнять резерв, цели и развитие.";
   els.financeModePanel.className = `finance-card finance-mode-panel mode-${finance.mode === "Антикризисный" ? "crisis" : finance.mode === "Стабилизация" ? "stable" : "growth"} ${collapsed ? "is-collapsed" : ""}`;
   els.financeModePanel.innerHTML = collapsed
     ? renderCollapsedFinanceCard("mode", "Режим", finance.mode, `${finance.requiredPercent}%`)
     : `
-      <div class="finance-card-head">
-        <span>Режим</span>
-        <button class="icon-btn compact-icon" type="button" data-collapse-finance-panel="mode" aria-label="Скрыть режим">×</button>
-      </div>
-      <div class="finance-card-main">
+      <div class="mode-copy">
+        <span>Текущий режим</span>
         <strong>${escapeHtml(finance.mode)}</strong>
-        <b>${finance.requiredPercent}%</b>
+        <p><b>${finance.requiredPercent}%</b> дохода уходит на обязательные платежи.</p>
+        <p>${escapeHtml(heroCopy)}</p>
+        ${pausedFunds.length ? `<small>На паузе: ${escapeHtml(pausedFunds.slice(0, 4).join(", "))}${pausedFunds.length > 4 ? "..." : ""}</small>` : ""}
       </div>
-      <p>Платежи ${money(finance.requiredPayments)} · жизнь ${money(finance.minimumLifeExpenses)} · паузы ${pausedFunds.length}</p>
-      ${pausedFunds.length ? `<small>${escapeHtml(pausedFunds.join(", "))}</small>` : ""}
+      <div class="mode-gauge" style="--gauge-angle: ${roundMoney(gaugeValue * 1.8)}deg">
+        <div class="mode-gauge-arc"></div>
+        <strong>${finance.requiredPercent}%</strong>
+        <span>долговая нагрузка</span>
+      </div>
+      <div class="mode-action">
+        <button class="icon-btn compact-icon" type="button" data-collapse-finance-panel="mode" aria-label="Скрыть режим">×</button>
+        <button class="ghost-btn compact" type="button">Подробнее о режиме</button>
+      </div>
     `;
 }
 
@@ -1443,23 +1455,37 @@ function renderMonthSummary() {
     return;
   }
 
+  const finance = calculateMonthlyFinance();
   const active = activeFunds();
   const monthTarget = active.reduce((sum, fund) => sum + Number(fund.monthTarget || 0), 0);
   const monthBalance = active.reduce((sum, fund) => sum + Number(fund.monthBalance || 0), 0);
   const remaining = Math.max(0, roundMoney(monthTarget - monthBalance));
   const progress = monthTarget ? Math.min(100, Math.round(monthBalance / monthTarget * 100)) : 0;
   els.monthSummaryCard.innerHTML = `
-    <div>
-      <span>Внесено за месяц</span>
-      <strong>${money(monthBalance)}</strong>
+    <div class="kpi-card kpi-income">
+      <span>Доход за месяц</span>
+      <strong>${money(finance.monthlyIncome)}</strong>
+      <small>ожидаемый доход</small>
     </div>
-    <div>
-      <span>До целей месяца</span>
-      <strong>${money(remaining)}</strong>
+    <div class="kpi-card kpi-required">
+      <span>Обязательные платежи</span>
+      <strong>${money(finance.requiredPayments)}</strong>
+      <small>${finance.requiredPercent}% от дохода</small>
     </div>
-    <div>
+    <div class="kpi-card kpi-life">
+      <span>Минимум на жизнь</span>
+      <strong>${money(finance.minimumLifeExpenses)}</strong>
+      <small>базовые расходы</small>
+    </div>
+    <div class="kpi-card ${finance.freeBalance < 0 ? "kpi-negative" : "kpi-positive"}">
+      <span>Свободный остаток</span>
+      <strong>${money(finance.freeBalance)}</strong>
+      <small>на этот месяц</small>
+    </div>
+    <div class="kpi-card kpi-progress">
       <span>Прогресс</span>
       <strong>${progress}%</strong>
+      <small>выполнено</small>
     </div>
   `;
 }
@@ -3476,7 +3502,7 @@ function switchScreen(screen, options = {}) {
 
   const titles = {
     account: "Кабинет",
-    dashboard: "Мои деньги",
+    dashboard: "Дашборд",
     history: "История операций"
   };
   els.screenTitle.textContent = titles[nextScreen];
