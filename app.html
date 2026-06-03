@@ -177,7 +177,9 @@
               <h2>Распределение</h2>
               <span id="distributionLabel"></span>
             </div>
-            <div class="donut-wrap">
+            <button class="ghost-btn compact distribution-toggle" id="distributionToggleBtn" type="button">Развернуть распределение</button>
+            <div class="distribution-compact" id="distributionCompact"></div>
+            <div class="donut-wrap is-hidden" id="donutWrap">
               <div class="donut" id="donutChart"></div>
               <div class="donut-center">
                 <strong id="donutTotal">100%</strong>
@@ -261,6 +263,16 @@
         <label>Цвет
           <input id="fundColor" type="color" required>
         </label>
+        <label>Тип фонда
+          <select id="fundType" required>
+            <option value="saving">Накопление</option>
+            <option value="spending">Расходный лимит</option>
+            <option value="debt">Долг</option>
+            <option value="reserve">Резерв</option>
+            <option value="business">Бизнес</option>
+            <option value="required">Обязательный платеж</option>
+          </select>
+        </label>
         <label>Баланс
           <input id="fundBalance" type="number" min="0" step="0.01" required>
         </label>
@@ -332,6 +344,23 @@
         <button class="primary-btn" id="saveFundBtn" value="default" type="submit">Сохранить</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog class="fund-modal" id="monthReportModal">
+    <article class="modal-card month-report-card">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Закрытие месяца</p>
+          <h2 id="monthReportTitle">Отчет месяца</h2>
+        </div>
+        <button class="icon-btn" type="button" data-cancel-month-report aria-label="Закрыть">×</button>
+      </div>
+      <div id="monthReportContent"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" type="button" data-cancel-month-report>Вернуться</button>
+        <button class="primary-btn" id="confirmMonthReportBtn" type="button">Создать новый месяц</button>
+      </div>
+    </article>
   </dialog>
 
   <dialog class="fund-modal" id="fundDetailModal">
