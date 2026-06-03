@@ -132,6 +132,7 @@ let lastOverflow = null;
 let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY);
 let collapsedFinancePanels = readCollapsedFinancePanels();
 let isDistributionExpanded = readBooleanPreference(DISTRIBUTION_EXPANDED_KEY);
+let areWarningsExpanded = false;
 const collapsedCategories = new Set();
 const isPrivateAppPage = window.location.pathname.endsWith("app.html");
 
@@ -1103,6 +1104,10 @@ function priorityBadge(fund) {
   return PRIORITY_LABELS[priority] || `Приоритет ${priority}`;
 }
 
+function priorityLevel(fund) {
+  return clamp(Number(fund.priority) || 1, 1, 5);
+}
+
 function currentMonthIncome() {
   const briefIncome = Number(state.monthBriefs?.[state.currentMonthKey]?.monthlyIncome) || 0;
   if (briefIncome > 0) {
@@ -1199,15 +1204,15 @@ function isFundPaused(fund, finance = calculateMonthlyFinance()) {
 function systemPauseReason(fund, finance = calculateMonthlyFinance()) {
   const overdueDebt = state.funds.find((item) => isDebtFund(item) && item.hasOverdue);
   if (overdueDebt) {
-    return `антикризисный режим. Сначала закройте просрочку: ${overdueDebt.name}.`;
+    return "Антикризис: сначала закройте просрочку.";
   }
   const dangerDebt = state.funds
     .filter(isDebtFund)
     .sort((a, b) => Number(b.annualRate || 0) - Number(a.annualRate || 0))[0];
   if (dangerDebt && Number(dangerDebt.annualRate || 0) > 40) {
-    return `антикризисный режим. Сначала снизьте нагрузку по долгу: ${dangerDebt.name}.`;
+    return "Антикризис: сначала снизьте дорогой долг.";
   }
-  return `${finance.mode.toLowerCase()} режим. Сначала защитите обязательные платежи.`;
+  return `${finance.mode}: сначала защитите обязательные платежи.`;
 }
 
 function progressOf(fund) {
@@ -1363,6 +1368,10 @@ function financeWarnings() {
   return [...new Set(warnings)];
 }
 
+function warningSeverity(warning) {
+  return /невозможно|опасн|высок|не снижает|антикризис/i.test(warning) ? "critical" : "warning";
+}
+
 function renderFinanceWarnings() {
   if (!els.financeWarningsPanel) {
     return;
@@ -1376,20 +1385,21 @@ function renderFinanceWarnings() {
   }
 
   const collapsed = collapsedFinancePanels.has("warnings");
+  const visibleWarnings = areWarningsExpanded ? warnings : warnings.slice(0, 2);
+  const hasHiddenWarnings = warnings.length > visibleWarnings.length;
   els.financeWarningsPanel.className = `finance-card finance-warnings-panel ${collapsed ? "is-collapsed" : ""}`;
   els.financeWarningsPanel.innerHTML = collapsed
     ? renderCollapsedFinanceCard("warnings", "Предупреждения", String(warnings.length), "Открыть")
     : `
       <div class="finance-card-head">
-        <span>Предупреждения</span>
+        <span>${warnings.length === 1 ? "1 предупреждение" : `${warnings.length} предупреждения`}</span>
         <button class="icon-btn compact-icon" type="button" data-collapse-finance-panel="warnings" aria-label="Скрыть предупреждения">×</button>
       </div>
-      <div class="finance-card-main">
-        <strong>${warnings.length}</strong>
-        <b>${escapeHtml(warnings[0])}</b>
-      </div>
-      ${warnings.length > 1
-        ? `<ul>${warnings.slice(1).map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}</ul>`
+      <ol class="finance-warning-list">
+        ${visibleWarnings.map((warning) => `<li class="is-${warningSeverity(warning)}">${escapeHtml(warning)}</li>`).join("")}
+      </ol>
+      ${hasHiddenWarnings || areWarningsExpanded
+        ? `<button class="ghost-btn compact warning-toggle" type="button" data-toggle-warnings>${areWarningsExpanded ? "Скрыть" : "Показать все"}</button>`
         : ""}
     `;
 }
@@ -1772,7 +1782,6 @@ function renderFunds() {
             <span>${groupFunds.length} фондов</span>
           </div>
           <div class="fund-group-stats">
-            <span>Баланс ${money(totals.balance)}</span>
             <span>Цель месяца ${money(totals.monthTarget)}</span>
             <span>${totals.percent}%</span>
           </div>
@@ -1796,14 +1805,15 @@ function renderFundCard(fund) {
   const pauseReason = isSystemPaused ? systemPauseReason(fund, finance) : fund.pauseReason || "ручная пауза пользователя.";
   const debt = debtCalculations(fund);
   return `
-      <article class="fund-card fund-card-${fundType} ${paused ? "is-frozen" : ""} ${isSystemPaused ? "is-system-paused" : ""} ${complete ? "is-complete" : ""} ${debt.annualRate >= 35 ? "is-high-rate" : ""}" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
+      <article class="fund-card fund-card-${fundType} ${paused ? "is-frozen" : ""} ${isSystemPaused ? "is-system-paused" : ""} ${complete ? "is-complete" : ""} ${debt.annualRate > 40 ? "is-high-rate" : ""}" data-fund-card="${fund.id}" style="--fund-color: ${fund.color}" tabindex="0">
         <div class="fund-head">
           <div class="fund-icon">${escapeHtml(fund.icon)}</div>
           <div class="fund-title">
             <h3>${escapeHtml(fund.name)}</h3>
             <div class="fund-badges">
               <span class="fund-badge">${escapeHtml(fundTypeLabel(fundType))}</span>
-              <span class="fund-badge priority-badge">${escapeHtml(priorityBadge(fund))}</span>
+              <span class="fund-badge priority-badge priority-${priorityLevel(fund)}">${escapeHtml(priorityBadge(fund))}</span>
+              ${debt.annualRate > 40 ? `<span class="fund-badge high-rate-badge">Высокая ставка</span>` : ""}
               ${paused ? `<span class="fund-badge pause-badge">${pauseLabel}</span>` : ""}
             </div>
           </div>
@@ -1817,7 +1827,7 @@ function renderFundCard(fund) {
         ${paused ? `
           <div class="fund-pause-note">
             <strong>${pauseLabel}</strong>
-            <span>Причина: ${escapeHtml(pauseReason)}</span>
+            <span>${escapeHtml(pauseReason)}</span>
           </div>
         ` : ""}
         ${renderFundCardBody(fund, fundType, progress)}
@@ -1829,30 +1839,32 @@ function renderFundCard(fund) {
 function renderFundCardBody(fund, fundType, progress) {
   if (fundType === "debt") {
     const debt = debtCalculations(fund);
+    const weakPayment = debt.minPayment > 0 && debt.debtBalance > 0 && (debt.principalPayment <= 0 || debt.principalPayment < debt.minPayment * 0.3);
     return `
+      <div class="fund-main-metric">
+        <span>Остаток долга</span>
+        <strong>${money(debt.debtBalance)}</strong>
+      </div>
       <div class="fund-money debt-money">
-        <div>
-          <span>Остаток долга</span>
-          <strong>${money(debt.debtBalance)}</strong>
+        <div class="metric-emphasis">
+          <span>Мин. платеж</span>
+          <strong>${money(debt.minPayment)}</strong>
+        </div>
+        <div class="metric-emphasis">
+          <span>Дата платежа</span>
+          <strong>${escapeHtml(fund.paymentDate || "-")}</strong>
         </div>
         <div>
           <span>Ставка</span>
           <strong>${debt.annualRate}%</strong>
         </div>
         <div>
-          <span>Платеж</span>
-          <strong>${money(debt.minPayment)}</strong>
-        </div>
-        <div>
-          <span>Дата</span>
-          <strong>${escapeHtml(fund.paymentDate || "-")}</strong>
+          <span>Проценты / тело</span>
+          <strong>${money(debt.monthlyInterest)} / ${money(Math.max(0, debt.principalPayment))}</strong>
         </div>
       </div>
-      ${debt.annualRate >= 35 ? `<div class="limit-warning">Высокая ставка: ${debt.annualRate}% годовых</div>` : ""}
-      <div class="fund-last-topup">
-        <span>Проценты / тело</span>
-        <strong>${money(debt.monthlyInterest)} / ${money(Math.max(0, debt.principalPayment))}</strong>
-      </div>
+      ${debt.annualRate > 40 ? `<div class="limit-warning is-critical">Высокая ставка. Проверьте досрочное погашение или реструктуризацию.</div>` : ""}
+      ${weakPayment ? `<div class="limit-warning">Платеж почти не снижает долг</div>` : ""}
       <div class="fund-footer strong-footer">
         <span>${escapeHtml(debtForecastText(fund))}</span>
       </div>
@@ -1863,6 +1875,10 @@ function renderFundCardBody(fund, fundType, progress) {
     const remaining = remainingLimitOf(fund);
     const over = Math.abs(Math.min(0, remaining));
     return `
+      <div class="fund-main-metric ${remaining < 0 ? "is-danger" : "is-ok"}">
+        <span>${remaining < 0 ? "Превышение" : "Осталось"}</span>
+        <strong>${money(Math.abs(remaining))}</strong>
+      </div>
       <div class="fund-money spending-money">
         <div>
           <span>Лимит месяца</span>
@@ -1873,15 +1889,11 @@ function renderFundCardBody(fund, fundType, progress) {
           <strong>${money(spentThisMonthOf(fund))}</strong>
         </div>
         <div>
-          <span>${remaining < 0 ? "Превышение" : "Осталось"}</span>
-          <strong class="${remaining < 0 ? "is-danger" : ""}">${money(Math.abs(remaining))}</strong>
-        </div>
-        <div>
           <span>Израсходовано</span>
           <strong>${spentPercentOf(fund)}%</strong>
         </div>
       </div>
-      ${remaining < 0 ? `<div class="limit-warning">Лимит превышен на ${money(over)}</div>` : ""}
+      ${remaining < 0 ? `<div class="limit-warning is-critical">Лимит превышен на ${money(over)}</div>` : ""}
       <div class="progress-track">
         <span class="progress-fill" style="--progress: ${Math.min(100, Math.max(0, progress))}%"></span>
       </div>
@@ -1894,11 +1906,11 @@ function renderFundCardBody(fund, fundType, progress) {
 
   const remaining = remainingOf(fund);
   return `
+    <div class="fund-main-metric">
+      <span>Собрано</span>
+      <strong>${money(fund.balance || 0)}</strong>
+    </div>
     <div class="fund-money">
-      <div>
-        <span>Собрано</span>
-        <strong>${money(fund.balance || 0)}</strong>
-      </div>
       <div>
         <span>Цель</span>
         <strong>${money(fund.target || 0)}</strong>
@@ -1908,28 +1920,39 @@ function renderFundCardBody(fund, fundType, progress) {
         <strong>${money(remaining)}</strong>
       </div>
       <div>
-        <span>Доля</span>
-        <strong>${fund.percent}%</strong>
+        <span>Прогресс</span>
+        <strong>${progress}%</strong>
       </div>
     </div>
     <div class="progress-track">
       <span class="progress-fill" style="--progress: ${progress}%"></span>
     </div>
     <div class="fund-footer">
-      <span>${progress}% к цели</span>
-      <span>${escapeHtml(priorityBadge(fund))}</span>
+      <span>${forecastFor(fund)}</span>
+      <span>${fund.percent}%</span>
     </div>
   `;
 }
 
 function renderFundQuickActions(fund, fundType) {
-  const paidLabel = fundType === "debt" ? "Оплатил" : "Оплатил";
+  const primaryAction = fundType === "debt" ? "paid" : fundType === "spending" || fundType === "required" ? "spend" : "topup";
+  const primaryLabel = {
+    topup: "Пополнить",
+    spend: "Списать",
+    paid: "Оплатил"
+  }[primaryAction];
+  const secondary = ["topup", "spend", "paid", "pause"].filter((action) => action !== primaryAction);
   return `
     <div class="fund-quick-actions">
-      <button type="button" data-fund-action="topup" data-fund-action-id="${fund.id}">Пополнить</button>
-      <button type="button" data-fund-action="spend" data-fund-action-id="${fund.id}">Списать</button>
-      <button type="button" data-fund-action="paid" data-fund-action-id="${fund.id}">${paidLabel}</button>
-      <button type="button" data-fund-action="pause" data-fund-action-id="${fund.id}">${fund.isFrozen ? "Вернуть" : "Пауза"}</button>
+      <button class="primary-action" type="button" data-fund-action="${primaryAction}" data-fund-action-id="${fund.id}">${primaryLabel}</button>
+      <details class="fund-more-actions">
+        <summary>Еще</summary>
+        <div>
+          ${secondary.map((action) => `
+            <button type="button" data-fund-action="${action}" data-fund-action-id="${fund.id}">${action === "pause" ? fund.isFrozen ? "Вернуть" : "Пауза" : actionLabel(action)}</button>
+          `).join("")}
+        </div>
+      </details>
     </div>
   `;
 }
@@ -3688,12 +3711,18 @@ els.requiredIncomePanel.addEventListener("click", (event) => {
 document.querySelector(".finance-alerts-row")?.addEventListener("click", (event) => {
   const collapseKey = event.target.closest("[data-collapse-finance-panel]")?.dataset.collapseFinancePanel;
   const expandKey = event.target.closest("[data-expand-finance-panel]")?.dataset.expandFinancePanel;
+  const toggleWarnings = event.target.closest("[data-toggle-warnings]");
   if (collapseKey) {
     toggleFinancePanel(collapseKey, true);
     return;
   }
   if (expandKey) {
     toggleFinancePanel(expandKey, false);
+    return;
+  }
+  if (toggleWarnings) {
+    areWarningsExpanded = !areWarningsExpanded;
+    renderFinanceWarnings();
   }
 });
 
@@ -3781,6 +3810,10 @@ els.fundGrid.addEventListener("click", (event) => {
 
   if (fundAction && fundActionId) {
     applyFundAction(fundActionId, fundAction);
+    return;
+  }
+
+  if (event.target.closest(".fund-more-actions")) {
     return;
   }
 

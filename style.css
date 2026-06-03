@@ -2402,6 +2402,425 @@ h2 {
   text-align: center;
 }
 
+/* Dashboard polish */
+.income-panel,
+.fund-card,
+.analytics-panel,
+.month-card,
+.history-item,
+.account-card,
+.month-summary-card,
+.finance-card,
+.required-income-panel,
+.overflow-panel {
+  border: 1px solid rgba(151, 190, 218, 0.78);
+  box-shadow: 0 12px 28px rgba(39, 87, 124, 0.09);
+}
+
+.income-panel {
+  grid-template-columns: minmax(180px, 0.62fr) minmax(360px, 1.38fr);
+  padding: 16px;
+  margin-bottom: 18px;
+  border: 2px solid rgba(31, 143, 255, 0.5);
+  background: linear-gradient(135deg, #ffffff 0%, #eef9ff 100%);
+}
+
+.income-panel::after {
+  display: none;
+}
+
+.income-copy strong {
+  font-size: 22px;
+}
+
+.income-form .primary-btn {
+  min-height: 44px;
+  padding-inline: 18px;
+}
+
+.dashboard-summary-row,
+.finance-alerts-row {
+  gap: 12px;
+}
+
+.dashboard-summary-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.month-summary-card {
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+}
+
+.month-summary-card,
+.finance-card {
+  min-height: 94px;
+}
+
+.month-summary-card div {
+  display: grid;
+  align-content: center;
+  min-height: 68px;
+  border-color: rgba(189, 221, 243, 0.86);
+  background: #f7fcff;
+}
+
+.month-summary-card strong,
+.finance-card-main strong,
+.finance-card-toggle strong {
+  font-size: 24px;
+}
+
+.finance-alerts-row {
+  grid-template-columns: repeat(3, minmax(190px, 1fr));
+  margin-bottom: 14px;
+}
+
+.finance-card {
+  padding: 12px;
+}
+
+.finance-mode-panel.mode-crisis {
+  border-color: #ff9aaa;
+  background: #fff3f5;
+}
+
+.free-balance-panel.is-negative {
+  border-color: #e66a78;
+  background: linear-gradient(135deg, #fff6f7 0%, #ffe9ec 100%);
+}
+
+.free-balance-panel.is-negative .finance-card-main strong {
+  color: #b42335;
+  font-size: 28px;
+}
+
+.finance-warnings-panel {
+  border-color: #f0c56d;
+  background: #fff9e4;
+}
+
+.finance-warning-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finance-warning-list li {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #f2d28c;
+  border-radius: var(--radius);
+  background: #fffdf4;
+  color: #7a5200;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.finance-warning-list li.is-critical {
+  border-color: #ffb4c0;
+  background: #fff1f3;
+  color: #a62235;
+}
+
+.warning-toggle {
+  margin-top: 8px;
+  min-height: 32px;
+  padding-inline: 10px;
+}
+
+.dashboard-layout {
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
+}
+
+.fund-group {
+  gap: 10px;
+}
+
+.fund-group-head {
+  grid-template-columns: minmax(220px, 1fr) minmax(170px, auto);
+  padding: 12px 42px 12px 14px;
+  border: 1px solid rgba(151, 190, 218, 0.78);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: none;
+}
+
+.fund-group-head strong {
+  font-size: 18px;
+}
+
+.fund-group-stats {
+  padding-right: 0;
+}
+
+.fund-group-stats span {
+  background: #f7fcff;
+}
+
+.fund-group-body {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+}
+
+.fund-card {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.fund-card:hover,
+.fund-card:focus-visible,
+.history-item:hover {
+  box-shadow: 0 16px 34px rgba(39, 87, 124, 0.13);
+}
+
+.fund-card::before {
+  height: 4px;
+}
+
+.fund-card-debt {
+  background: linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);
+}
+
+.fund-card.is-high-rate {
+  border-color: #e45567;
+  box-shadow: 0 14px 30px rgba(180, 35, 53, 0.13);
+}
+
+.fund-card.is-high-rate::before {
+  height: 6px;
+  background: #d12f45;
+}
+
+.fund-card.is-system-paused {
+  border-color: #e3b13f;
+  background: #fffaf0;
+}
+
+.fund-card.is-frozen {
+  opacity: 0.78;
+}
+
+.fund-icon {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+  border: 1px solid color-mix(in srgb, var(--fund-color) 45%, white);
+  box-shadow: none;
+}
+
+.fund-title h3 {
+  font-size: 20px;
+  line-height: 1.16;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
+.fund-badge {
+  min-height: 20px;
+  padding: 2px 7px;
+  border-color: transparent;
+}
+
+.priority-5 {
+  background: #ffecef;
+  color: #a62235;
+}
+
+.priority-4 {
+  background: #eaf4ff;
+  color: #0d5dba;
+}
+
+.priority-3 {
+  background: #e9fbf7;
+  color: #117765;
+}
+
+.priority-2 {
+  background: #f1f5f9;
+  color: #526173;
+}
+
+.priority-1 {
+  background: #fff4d3;
+  color: #9a6400;
+}
+
+.high-rate-badge {
+  background: #d12f45;
+  color: #fff;
+}
+
+.fund-actions .icon-btn {
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+}
+
+.fund-main-metric {
+  display: grid;
+  gap: 4px;
+  margin: 14px 0 10px;
+  padding: 12px;
+  border: 1px solid rgba(189, 221, 243, 0.88);
+  border-radius: var(--radius);
+  background: #f7fcff;
+}
+
+.fund-main-metric span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fund-main-metric strong {
+  color: var(--blue-dark);
+  font-size: 28px;
+  line-height: 1.04;
+  overflow-wrap: anywhere;
+}
+
+.fund-card-debt .fund-main-metric strong {
+  color: #172033;
+  font-size: 30px;
+}
+
+.fund-main-metric.is-ok strong {
+  color: #167044;
+}
+
+.fund-main-metric.is-danger {
+  border-color: #ffb4c0;
+  background: #fff1f3;
+}
+
+.fund-main-metric.is-danger strong {
+  color: #b42335;
+}
+
+.fund-money {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0 0 10px;
+}
+
+.debt-money,
+.spending-money {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fund-money div {
+  padding: 9px;
+  background: #ffffff;
+}
+
+.fund-money span {
+  margin-bottom: 4px;
+}
+
+.fund-money strong {
+  font-size: 17px;
+}
+
+.metric-emphasis strong {
+  color: var(--ink);
+}
+
+.limit-warning {
+  margin: 8px 0 10px;
+  border-color: #f2d28c;
+  background: #fff9e4;
+  color: #8a5b00;
+  line-height: 1.35;
+}
+
+.limit-warning.is-critical {
+  border-color: #ffb4c0;
+  background: #fff1f3;
+  color: #a62235;
+}
+
+.progress-track,
+.meter {
+  height: 8px;
+  border: 1px solid rgba(189, 221, 243, 0.95);
+}
+
+.fund-quick-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.fund-quick-actions button,
+.fund-more-actions summary {
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fund-quick-actions .primary-action {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+
+.fund-more-actions {
+  position: relative;
+}
+
+.fund-more-actions summary {
+  display: grid;
+  place-items: center;
+  list-style: none;
+  cursor: pointer;
+}
+
+.fund-more-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+.fund-more-actions[open] > div {
+  position: absolute;
+  z-index: 12;
+  right: 0;
+  top: calc(100% + 6px);
+  display: grid;
+  gap: 5px;
+  min-width: 132px;
+  padding: 6px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(39, 87, 124, 0.14);
+}
+
+.analytics-panel {
+  padding: 14px;
+}
+
+.donut-wrap {
+  width: min(170px, 100%);
+}
+
+.legend-dot {
+  border: 1px solid rgba(19, 34, 58, 0.32);
+}
+
 @media (max-width: 1180px) {
   .dashboard-layout {
     grid-template-columns: 1fr;
@@ -2495,7 +2914,6 @@ h2 {
   }
 
   .fund-money,
-  .fund-quick-actions,
   .fund-group-body,
   .form-grid,
   .debt-fields,
@@ -2503,6 +2921,10 @@ h2 {
   .month-report-grid,
   .month-report-lists {
     grid-template-columns: 1fr;
+  }
+
+  .fund-quick-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .span-2 {
