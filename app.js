@@ -11,6 +11,7 @@ const LEGACY_STATE_CONFIG = {
 };
 
 const SESSION_STORAGE_KEY = "money-system.supabase-session";
+const SUPABASE_PROXY_PATH = "/api/supabase";
 const REQUIRED_INCOME_VISIBILITY_KEY = "money-system.required-income-hidden";
 const FINANCE_PANELS_COLLAPSED_KEY = "money-system.finance-panels-collapsed";
 const DISTRIBUTION_EXPANDED_KEY = "money-system.distribution-expanded";
@@ -716,16 +717,21 @@ async function persistState(nextState) {
 }
 
 async function supabaseRequest(method, path, body, prefer = "return=representation") {
-  const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1${path}`, {
-    method,
-    headers: {
-      apikey: SUPABASE_CONFIG.apiKey,
-      Authorization: `Bearer ${session?.access_token || SUPABASE_CONFIG.apiKey}`,
-      "Content-Type": "application/json",
-      Prefer: prefer
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
+  let response;
+  try {
+    response = await fetch(supabaseUrl("rest", path), {
+      method,
+      headers: {
+        apikey: SUPABASE_CONFIG.apiKey,
+        Authorization: `Bearer ${session?.access_token || SUPABASE_CONFIG.apiKey}`,
+        "Content-Type": "application/json",
+        Prefer: prefer
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch (error) {
+    throw new Error(formatNetworkError(error, "базой данных"));
+  }
 
   if (!response.ok) {
     const message = await response.text();
@@ -737,20 +743,25 @@ async function supabaseRequest(method, path, body, prefer = "return=representati
   }
 
   const text = await response.text();
-  return text ? JSON.parse(text) : null;
+  return parseJsonResponse(text);
 }
 
 async function supabaseAnonRequest(method, path, body, prefer = "return=representation") {
-  const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1${path}`, {
-    method,
-    headers: {
-      apikey: SUPABASE_CONFIG.apiKey,
-      Authorization: `Bearer ${SUPABASE_CONFIG.apiKey}`,
-      "Content-Type": "application/json",
-      Prefer: prefer
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
+  let response;
+  try {
+    response = await fetch(supabaseUrl("rest", path), {
+      method,
+      headers: {
+        apikey: SUPABASE_CONFIG.apiKey,
+        Authorization: `Bearer ${SUPABASE_CONFIG.apiKey}`,
+        "Content-Type": "application/json",
+        Prefer: prefer
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch (error) {
+    throw new Error(formatNetworkError(error, "базой данных"));
+  }
 
   if (!response.ok) {
     const message = await response.text();
@@ -762,22 +773,27 @@ async function supabaseAnonRequest(method, path, body, prefer = "return=represen
   }
 
   const text = await response.text();
-  return text ? JSON.parse(text) : null;
+  return parseJsonResponse(text);
 }
 
 async function authRequest(path, body, token = null) {
-  const response = await fetch(`${SUPABASE_CONFIG.url}/auth/v1${path}`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_CONFIG.apiKey,
-      Authorization: `Bearer ${token || SUPABASE_CONFIG.apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
+  let response;
+  try {
+    response = await fetch(supabaseUrl("auth", path), {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_CONFIG.apiKey,
+        Authorization: `Bearer ${token || SUPABASE_CONFIG.apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch (error) {
+    throw new Error(formatNetworkError(error, "сервером авторизации"));
+  }
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = parseJsonResponse(text);
 
   if (!response.ok) {
     throw new Error(data?.msg || data?.error_description || data?.message || `HTTP ${response.status}`);
@@ -934,6 +950,44 @@ function updateProfileLogin(login, options = {}) {
 
 function isSupabaseConfigured() {
   return SUPABASE_CONFIG.url.startsWith("https://") && SUPABASE_CONFIG.apiKey.length > 20;
+}
+
+function supabaseUrl(area, path) {
+  if (shouldUseSupabaseProxy()) {
+    return `${SUPABASE_PROXY_PATH}?area=${encodeURIComponent(area)}&path=${encodeURIComponent(path)}`;
+  }
+
+  return `${SUPABASE_CONFIG.url}/${area}/v1${path}`;
+}
+
+function shouldUseSupabaseProxy() {
+  const hostname = window.location.hostname;
+  return window.location.protocol !== "file:"
+    && hostname !== "localhost"
+    && hostname !== "127.0.0.1"
+    && hostname !== "::1";
+}
+
+function parseJsonResponse(text) {
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Сервер вернул некорректный ответ. Обновите страницу и попробуйте снова.");
+  }
+}
+
+function formatNetworkError(error, target = "сервером") {
+  const message = error?.message || String(error || "");
+  const lower = message.toLowerCase();
+  if (lower.includes("load failed") || lower.includes("failed to fetch") || lower.includes("network")) {
+    return `Не удалось связаться с ${target}. Обновите страницу или откройте сайт в обычном браузере и попробуйте снова.`;
+  }
+
+  return message || `Не удалось связаться с ${target}.`;
 }
 
 function sortedFunds() {
@@ -2082,7 +2136,7 @@ function getWarningText(percent, valid) {
   }
 
   if (!isStorageReady) {
-    return "Подключите Supabase в app.js, чтобы изменения сохранялись в базе данных.";
+    return storageStatus || "Не удалось подготовить сохранение данных.";
   }
 
   if (!valid) {
@@ -3510,7 +3564,7 @@ function canChangeData() {
     return true;
   }
 
-  showToast("Сначала подключите Supabase, чтобы изменения сохранялись в базе.");
+  showToast(storageStatus || "Сначала дождитесь подключения к Supabase.");
   return false;
 }
 
@@ -3967,6 +4021,10 @@ window.addEventListener("unhandledrejection", (event) => {
 
 function translateAuthError(message) {
   const lower = message.toLowerCase();
+  if (lower.includes("load failed") || lower.includes("failed to fetch") || lower.includes("network")) {
+    return "Ошибка авторизации: не удалось связаться с сервером. Обновите страницу или откройте сайт в обычном браузере.";
+  }
+
   if (lower.includes("invalid login") || lower.includes("invalid credentials")) {
     return "Неверный email или пароль.";
   }

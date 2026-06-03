@@ -4,6 +4,7 @@ const SUPABASE_CONFIG = {
 };
 
 const SESSION_STORAGE_KEY = "money-system.supabase-session";
+const SUPABASE_PROXY_PATH = "/api/supabase";
 
 const demoFunds = [
   { id: "required", name: "Обязательные платежи", color: "#3b82f6", percent: 30 },
@@ -148,21 +149,65 @@ function updateDemoFund(id, field, value) {
 }
 
 async function authRequest(path, body) {
-  const response = await fetch(`${SUPABASE_CONFIG.url}/auth/v1${path}`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_CONFIG.apiKey,
-      Authorization: `Bearer ${SUPABASE_CONFIG.apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
+  let response;
+  try {
+    response = await fetch(supabaseUrl("auth", path), {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_CONFIG.apiKey,
+        Authorization: `Bearer ${SUPABASE_CONFIG.apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch (error) {
+    throw new Error(formatNetworkError(error));
+  }
+
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = parseJsonResponse(text);
   if (!response.ok) {
     throw new Error(data?.msg || data?.error_description || data?.message || `HTTP ${response.status}`);
   }
   return data;
+}
+
+function supabaseUrl(area, path) {
+  if (shouldUseSupabaseProxy()) {
+    return `${SUPABASE_PROXY_PATH}?area=${encodeURIComponent(area)}&path=${encodeURIComponent(path)}`;
+  }
+
+  return `${SUPABASE_CONFIG.url}/${area}/v1${path}`;
+}
+
+function shouldUseSupabaseProxy() {
+  const hostname = window.location.hostname;
+  return window.location.protocol !== "file:"
+    && hostname !== "localhost"
+    && hostname !== "127.0.0.1"
+    && hostname !== "::1";
+}
+
+function parseJsonResponse(text) {
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Сервер вернул некорректный ответ. Обновите страницу и попробуйте снова.");
+  }
+}
+
+function formatNetworkError(error) {
+  const message = error?.message || String(error || "");
+  const lower = message.toLowerCase();
+  if (lower.includes("load failed") || lower.includes("failed to fetch") || lower.includes("network")) {
+    return "Не удалось связаться с сервером авторизации. Обновите страницу или откройте сайт в обычном браузере и попробуйте снова.";
+  }
+
+  return message || "Не удалось связаться с сервером авторизации.";
 }
 
 function normalizeSession(value) {
@@ -213,6 +258,10 @@ async function signUp(email, password) {
 
 function translateAuthError(message) {
   const lower = message.toLowerCase();
+  if (lower.includes("load failed") || lower.includes("failed to fetch") || lower.includes("network")) {
+    return "Ошибка авторизации: не удалось связаться с сервером. Обновите страницу или откройте сайт в обычном браузере.";
+  }
+
   if (lower.includes("invalid login") || lower.includes("invalid credentials")) {
     return "Неверный email или пароль.";
   }
