@@ -4707,3 +4707,71 @@ body {
     padding: 18px 18px 82px;
   }
 }
+/* Встроенная форма быстрого действия */
+.fund-inline-action {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #b9dcfa;
+  border-radius: var(--radius);
+  background: #eef8ff;
+  animation: rise 160ms ease both;
+}
+
+.fund-inline-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.fund-inline-action label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fund-inline-action input {
+  min-height: 42px;
+  border: 1px solid #b9dcfa;
+  background: #fff;
+}
+
+.fund-inline-action input:focus {
+  border-color: var(--blue);
+}
+
+.fund-inline-action .confirm-btn {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #2f7de1;
+  border-radius: var(--radius);
+  background: var(--blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fund-inline-action .cancel-btn {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.fund-inline-action .confirm-btn:hover {
+  background: var(--blue-dark);
+}
+
+.fund-inline-action .cancel-btn:hover {
+  border-color: var(--blue);
+  color: var(--ink);
+}
