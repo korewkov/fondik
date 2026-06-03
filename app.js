@@ -1646,7 +1646,7 @@ function renderHeroSlider(context) {
   const slides = heroSlidesFor(context);
   heroSlideIndex = slides.length ? heroSlideIndex % slides.length : 0;
   els.heroSliderTrack.innerHTML = slides.map((slide, index) => `
-    <article class="hero-slide ${index === heroSlideIndex ? "is-active" : ""} tone-${slide.tone}" data-hero-slide="${index}">
+    <article class="hero-slide ${index === heroSlideIndex ? "is-active" : ""} tone-${slide.tone}" data-hero-slide="${index}" style="--hero-image: url('assets/slider/${escapeHtml(slide.illustration)}.png')">
       <div class="hero-card-inner">
         <div class="hero-card-face hero-card-front">
           <div class="hero-slide-copy">
@@ -1654,9 +1654,6 @@ function renderHeroSlider(context) {
             <strong>${escapeHtml(slide.title)}</strong>
             <p>${escapeHtml(slide.text)}</p>
             <small>${escapeHtml(slide.meta)}</small>
-          </div>
-          <div class="hero-illustration-placeholder" data-illustration="${escapeHtml(slide.illustration)}">
-            <i></i>
           </div>
           <button class="ghost-btn compact hero-flip-btn" type="button" data-hero-flip>Подробнее</button>
         </div>
