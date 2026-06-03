@@ -181,9 +181,11 @@ const els = {
   financeModePanel: document.querySelector("#financeModePanel"),
   freeBalancePanel: document.querySelector("#freeBalancePanel"),
   financeWarningsPanel: document.querySelector("#financeWarningsPanel"),
+  distributionStatusCard: document.querySelector("#distributionStatusCard"),
   showRequiredIncomeBtn: document.querySelector("#showRequiredIncomeBtn"),
   requiredIncomePanel: document.querySelector("#requiredIncomePanel"),
   overflowPanel: document.querySelector("#overflowPanel"),
+  analyticsPanel: document.querySelector(".analytics-panel"),
   fundCount: document.querySelector("#fundCount"),
   donutChart: document.querySelector("#donutChart"),
   donutWrap: document.querySelector("#donutWrap"),
@@ -1163,6 +1165,17 @@ function priorityLevel(fund) {
   return clamp(Number(fund.priority) || 1, 1, 5);
 }
 
+function plannedTransferFor(fund) {
+  const income = currentMonthIncome();
+  if (income > 0 && Number(fund.percent || 0) > 0) {
+    return roundMoney(income * Number(fund.percent || 0) / 100);
+  }
+  if (isDebtFund(fund)) {
+    return roundMoney(fund.minPayment || fund.monthTarget || 0);
+  }
+  return roundMoney(fund.monthTarget || 0);
+}
+
 function currentMonthIncome() {
   const briefIncome = Number(state.monthBriefs?.[state.currentMonthKey]?.monthlyIncome) || 0;
   if (briefIncome > 0) {
@@ -1899,6 +1912,11 @@ function renderFundCard(fund) {
             <span>${escapeHtml(pauseReason)}</span>
           </div>
         ` : ""}
+        <div class="fund-transfer">
+          <span>Перевести</span>
+          <strong>${money(plannedTransferFor(fund))}</strong>
+          <small>${fund.percent}% от дохода</small>
+        </div>
         ${renderFundCardBody(fund, fundType, progress)}
         ${renderFundQuickActions(fund, fundType)}
       </article>
@@ -2010,18 +2028,10 @@ function renderFundQuickActions(fund, fundType) {
     spend: "Списать",
     paid: "Оплатил"
   }[primaryAction];
-  const secondary = ["topup", "spend", "paid", "pause"].filter((action) => action !== primaryAction);
   return `
     <div class="fund-quick-actions">
       <button class="primary-action" type="button" data-fund-action="${primaryAction}" data-fund-action-id="${fund.id}">${primaryLabel}</button>
-      <details class="fund-more-actions">
-        <summary>Еще</summary>
-        <div>
-          ${secondary.map((action) => `
-            <button type="button" data-fund-action="${action}" data-fund-action-id="${fund.id}">${action === "pause" ? fund.isFrozen ? "Вернуть" : "Пауза" : actionLabel(action)}</button>
-          `).join("")}
-        </div>
-      </details>
+      <button type="button" data-fund-action="pause" data-fund-action-id="${fund.id}">${fund.isFrozen ? "Вернуть" : "Пауза"}</button>
     </div>
   `;
 }
@@ -2030,6 +2040,8 @@ function renderDistribution() {
   const funds = sortedFunds();
   const finance = calculateMonthlyFinance();
   const active = funds.filter((fund) => !isFundPaused(fund, finance));
+  const valid = isDistributionValid();
+  const percent = totalPercent();
   let cursor = 0;
   const slices = active.map((fund) => {
     const from = cursor;
@@ -2037,9 +2049,26 @@ function renderDistribution() {
     return `${fund.color} ${from}% ${cursor}%`;
   });
 
+  els.analyticsPanel?.classList.toggle("is-hidden", valid);
+  els.distributionStatusCard?.classList.toggle("is-hidden", valid);
+  if (els.distributionStatusCard) {
+    const diff = roundMoney(100 - percent);
+    els.distributionStatusCard.innerHTML = `
+      <button type="button" data-scroll-distribution>
+        <span>Распределение</span>
+        <strong>${percent}%</strong>
+        <small>${diff > 0 ? `добавить ${diff}%` : `убрать ${Math.abs(diff)}%`}</small>
+      </button>
+    `;
+  }
+
+  if (!els.donutChart || !els.donutTotal || !els.distributionLabel || !els.distributionToggleBtn || !els.donutWrap || !els.distributionLegend || !els.distributionCompact) {
+    return;
+  }
+
   els.donutChart.style.background = slices.length ? `conic-gradient(${slices.join(", ")})` : "conic-gradient(#37d399 0 100%)";
-  els.donutTotal.textContent = `${totalPercent()}%`;
-  els.distributionLabel.textContent = isDistributionValid() ? "готово" : "требует настройки";
+  els.donutTotal.textContent = `${percent}%`;
+  els.distributionLabel.textContent = valid ? "готово" : "требует настройки";
   els.distributionToggleBtn.textContent = isDistributionExpanded ? "Свернуть распределение" : "Развернуть распределение";
   els.donutWrap.classList.toggle("is-hidden", !isDistributionExpanded);
   els.distributionLegend.classList.toggle("is-hidden", !isDistributionExpanded);
@@ -2051,7 +2080,7 @@ function renderDistribution() {
     <div class="distribution-mini-card">
       <div class="distribution-mini-head">
         <span>В фондах</span>
-        <strong>${totalPercent()}%</strong>
+        <strong>${percent}%</strong>
         <small>${active.length} фондов</small>
       </div>
       <div class="top-distribution">
@@ -2280,7 +2309,25 @@ function openFundModal(fund) {
   els.fundHasOverdue.checked = Boolean(fund?.hasOverdue);
   els.fundExtraPayment.value = fund?.extraPayment ?? "";
   els.fundDebtType.value = normalizeDebtType(fund?.debtType || fund?.type);
+  syncFundFormFields();
   els.fundModal.showModal();
+}
+
+function syncFundFormFields() {
+  if (!els.fundForm || !els.fundType) {
+    return;
+  }
+
+  const fundType = normalizeFundType(els.fundType.value);
+  const isDebt = fundType === "debt";
+  const isLimit = ["spending", "required"].includes(fundType);
+  els.fundForm.querySelectorAll("[data-fund-field]").forEach((field) => {
+    const key = field.dataset.fundField;
+    const hidden = (isDebt && ["balance", "target"].includes(key))
+      || (isLimit && key === "target");
+    field.classList.toggle("is-hidden", hidden);
+  });
+  els.fundForm.querySelector(".debt-fields")?.classList.toggle("is-hidden", !isDebt);
 }
 
 function saveFundFromForm() {
@@ -2475,100 +2522,24 @@ function openFundDetails(fund) {
     return;
   }
 
-  const totalProgress = progressOf(fund);
-  const monthProgress = monthProgressOf(fund);
   const debt = debtCalculations(fund);
   const finance = calculateMonthlyFinance();
   const paused = isFundPaused(fund, finance);
   const isSystemPaused = isFundSystemPaused(fund, finance);
+  const fundType = normalizeFundType(fund.fundType || fund.type, fund);
   els.fundDetailContent.innerHTML = `
     <div class="modal-head">
       <div class="fund-detail-title">
         <div class="fund-icon" style="--fund-color: ${fund.color}">${escapeHtml(fund.icon)}</div>
         <div>
-          <p class="eyebrow">Общая информация</p>
+          <p class="eyebrow">${escapeHtml(fundTypeLabel(fundType))}</p>
           <h2>${escapeHtml(fund.name)}</h2>
         </div>
       </div>
       <button class="icon-btn" type="button" data-close-detail aria-label="Закрыть">×</button>
     </div>
 
-    <div class="detail-grid">
-      <div class="detail-box">
-        <span>Общий баланс</span>
-        <strong>${money(fund.balance)}</strong>
-      </div>
-      <div class="detail-box">
-        <span>Общая цель</span>
-        <strong>${money(fund.target)}</strong>
-      </div>
-      <div class="detail-box">
-        <span>Осталось всего</span>
-        <strong>${money(remainingOf(fund))}</strong>
-      </div>
-      <div class="detail-box">
-        <span>Прогресс цели</span>
-        <strong>${totalProgress}%</strong>
-      </div>
-    </div>
-
-    <div class="detail-progress">
-      <div class="detail-row">
-        <span>Общая цель</span>
-        <strong>${totalProgress}%</strong>
-      </div>
-      <div class="progress-track">
-        <span class="progress-fill" style="--progress: ${totalProgress}%; --fund-color: ${fund.color}"></span>
-      </div>
-    </div>
-
-    <div class="detail-grid compact-detail-grid">
-      <div class="detail-box">
-        <span>За месяц</span>
-        <strong>${money(fund.monthBalance || 0)}</strong>
-      </div>
-      <div class="detail-box">
-        <span>Цель месяца</span>
-        <strong>${money(fund.monthTarget || 0)}</strong>
-      </div>
-      <div class="detail-box">
-        <span>Осталось в месяце</span>
-        <strong>${money(monthRemainingOf(fund))}</strong>
-      </div>
-      <div class="detail-box">
-        <span>Месячный прогресс</span>
-        <strong>${monthProgress}%</strong>
-      </div>
-    </div>
-
-    ${isDebtFund(fund) ? `
-      <div class="detail-grid debt-detail-grid">
-        <div class="detail-box">
-          <span>Остаток долга</span>
-          <strong>${money(debt.debtBalance)}</strong>
-        </div>
-        <div class="detail-box">
-          <span>Ставка</span>
-          <strong>${debt.annualRate}%</strong>
-        </div>
-        <div class="detail-box">
-          <span>Проценты в месяц</span>
-          <strong>${money(debt.monthlyInterest)}</strong>
-        </div>
-        <div class="detail-box">
-          <span>Минимальный платеж</span>
-          <strong>${money(debt.minPayment)}</strong>
-        </div>
-        <div class="detail-box">
-          <span>Гасится тело</span>
-          <strong>${money(debt.principalPayment)}</strong>
-        </div>
-        <div class="detail-box">
-          <span>Дата платежа</span>
-          <strong>${escapeHtml(fund.paymentDate || "-")}</strong>
-        </div>
-      </div>
-    ` : ""}
+    ${renderFundDetailBody(fund, fundType, debt)}
 
     ${paused ? `
       <div class="detail-warning">
@@ -2577,13 +2548,58 @@ function openFundDetails(fund) {
       </div>
     ` : ""}
 
-    <p class="detail-description">${escapeHtml(fund.description || "Без описания")}</p>
     <div class="detail-row">
-      <span>${forecastFor(fund)}</span>
-      <span>${escapeHtml(fund.category)} · ${paused ? "заморожен" : `${fund.percent}% дохода`} · приоритет ${fund.priority}</span>
+      <span>${escapeHtml(fund.category)} · ${escapeHtml(priorityBadge(fund))}</span>
+      <span>${paused ? "пауза" : `${fund.percent}% дохода`}</span>
     </div>
   `;
   els.fundDetailModal.showModal();
+}
+
+function renderFundDetailBody(fund, fundType, debt) {
+  if (fundType === "debt") {
+    return `
+      <div class="detail-grid compact-detail-grid">
+        <div class="detail-box"><span>Остаток долга</span><strong>${money(debt.debtBalance)}</strong></div>
+        <div class="detail-box"><span>Перевести</span><strong>${money(plannedTransferFor(fund))}</strong></div>
+        <div class="detail-box"><span>Мин. платеж</span><strong>${money(debt.minPayment)}</strong></div>
+        <div class="detail-box"><span>Дата</span><strong>${escapeHtml(fund.paymentDate || "-")}</strong></div>
+        <div class="detail-box"><span>Ставка</span><strong>${debt.annualRate}%</strong></div>
+        <div class="detail-box"><span>Проценты / тело</span><strong>${money(debt.monthlyInterest)} / ${money(Math.max(0, debt.principalPayment))}</strong></div>
+      </div>
+      <div class="detail-warning">
+        <strong>${escapeHtml(debtForecastText(fund))}</strong>
+      </div>
+    `;
+  }
+
+  if (fundType === "spending" || fundType === "required") {
+    const remaining = remainingLimitOf(fund);
+    return `
+      <div class="detail-grid compact-detail-grid">
+        <div class="detail-box"><span>Перевести</span><strong>${money(plannedTransferFor(fund))}</strong></div>
+        <div class="detail-box"><span>Лимит месяца</span><strong>${money(monthlyLimitOf(fund))}</strong></div>
+        <div class="detail-box"><span>Потрачено</span><strong>${money(spentThisMonthOf(fund))}</strong></div>
+        <div class="detail-box"><span>${remaining < 0 ? "Превышение" : "Осталось"}</span><strong>${money(Math.abs(remaining))}</strong></div>
+      </div>
+    `;
+  }
+
+  const progress = progressOf(fund);
+  return `
+    <div class="detail-grid compact-detail-grid">
+      <div class="detail-box"><span>Перевести</span><strong>${money(plannedTransferFor(fund))}</strong></div>
+      <div class="detail-box"><span>Собрано</span><strong>${money(fund.balance)}</strong></div>
+      <div class="detail-box"><span>Цель</span><strong>${money(fund.target)}</strong></div>
+      <div class="detail-box"><span>Осталось</span><strong>${money(remainingOf(fund))}</strong></div>
+    </div>
+    <div class="detail-progress">
+      <div class="detail-row"><span>Прогресс цели</span><strong>${progress}%</strong></div>
+      <div class="progress-track">
+        <span class="progress-fill" style="--progress: ${progress}%; --fund-color: ${fund.color}"></span>
+      </div>
+    </div>
+  `;
 }
 
 function resetMonth() {
@@ -3728,6 +3744,8 @@ els.monthBriefForm?.addEventListener("input", renderMonthBriefPreview);
 
 els.monthBriefForm?.addEventListener("change", renderMonthBriefPreview);
 
+els.fundType?.addEventListener("change", syncFundFormFields);
+
 els.monthBriefForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   if (event.submitter?.value === "cancel") {
@@ -3777,6 +3795,12 @@ els.requiredIncomePanel.addEventListener("click", (event) => {
 });
 
 document.querySelector(".dashboard-summary-row")?.addEventListener("click", (event) => {
+  if (event.target.closest("[data-scroll-distribution]")) {
+    els.analyticsPanel?.classList.remove("is-hidden");
+    els.analyticsPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
   const collapseKey = event.target.closest("[data-collapse-finance-panel]")?.dataset.collapseFinancePanel;
   const expandKey = event.target.closest("[data-expand-finance-panel]")?.dataset.expandFinancePanel;
   const toggleWarnings = event.target.closest("[data-toggle-warnings]");

@@ -133,6 +133,7 @@
           <div class="month-summary-card" id="monthSummaryCard"></div>
           <div class="finance-mode-panel" id="financeModePanel"></div>
           <div class="finance-warnings-panel" id="financeWarningsPanel"></div>
+          <div class="distribution-status-card is-hidden" id="distributionStatusCard"></div>
           <button class="ghost-btn compact is-hidden" id="showRequiredIncomeBtn" type="button">Показать расчет дохода</button>
         </div>
         <div class="required-income-panel" id="requiredIncomePanel"></div>
@@ -161,7 +162,6 @@
                     </div>
                   </div>
                 </div>
-                <button class="ghost-btn compact" id="editMonthBriefBtn" type="button">Бриф месяца</button>
                 <button class="ghost-btn compact" id="addMonthBtn" type="button">Новый месяц</button>
                 <button class="primary-btn compact" id="addFundBtn" type="button">Новый фонд</button>
               </div>
@@ -169,7 +169,7 @@
             <div class="fund-grid" id="fundGrid"></div>
           </section>
 
-          <aside class="analytics-panel">
+          <aside class="analytics-panel is-hidden">
             <div class="section-heading">
               <h2>Распределение</h2>
               <span id="distributionLabel"></span>
@@ -270,13 +270,13 @@
             <option value="required">Обязательный платеж</option>
           </select>
         </label>
-        <label>Баланс
+        <label data-fund-field="balance">Баланс
           <input id="fundBalance" type="number" min="0" step="0.01" required>
         </label>
-        <label>Цель
+        <label data-fund-field="target">Цель
           <input id="fundTarget" type="number" min="0" step="0.01" required>
         </label>
-        <label>Цель на месяц
+        <label data-fund-field="monthTarget">План / лимит месяца
           <input id="fundMonthTarget" type="number" min="0" step="0.01" required>
         </label>
         <label>Процент
@@ -297,7 +297,7 @@
             <option>Другое</option>
           </select>
         </label>
-        <label class="span-2">Описание
+        <label class="span-2 is-hidden">Описание
           <textarea id="fundDescription" rows="3" maxlength="180"></textarea>
         </label>
         <div class="debt-fields span-2">
@@ -317,7 +317,7 @@
           <label>Дата платежа
             <input id="fundPaymentDate" type="text" maxlength="40" placeholder="Например, 25 число">
           </label>
-          <label>Доп. платеж
+          <label class="is-hidden">Доп. платеж
             <input id="fundExtraPayment" type="number" min="0" step="0.01">
           </label>
           <label>Тип долга
