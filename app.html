@@ -32,7 +32,7 @@
     window.setTimeout(() => {
       const appShell = document.querySelector("#appShell");
       if (!appShell || appShell.classList.contains("is-hidden")) {
-        window.location.replace("index.html#login");
+        window.location.replace("/login");
       }
     }, 15000);
   </script>
@@ -43,7 +43,7 @@
       <img class="brand-lockup" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
     </div>
     <p>Восстанавливаем сессию и загружаем ваши фонды.</p>
-    <a class="ghost-btn compact" href="index.html#login">Вернуться ко входу</a>
+    <a class="ghost-btn compact" href="/login">Вернуться ко входу</a>
   </div>
 
   <dialog class="auth-modal" id="authModal">
@@ -80,8 +80,9 @@
         </div>
 
         <nav class="nav top-nav" aria-label="Основная навигация">
-          <button class="nav-btn is-active" data-screen="dashboard">Дашборд</button>
-          <button class="nav-btn" data-screen="history">История</button>
+          <button class="nav-btn is-active" data-screen="dashboard" data-route="/dashboard">Дашборд</button>
+          <button class="nav-btn" data-screen="dashboard" data-route="/funds">Фонды</button>
+          <button class="nav-btn" data-screen="history" data-route="/history">История</button>
         </nav>
 
         <div class="user-panel">

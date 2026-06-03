@@ -19,6 +19,23 @@ const FINANCE_PANELS_COLLAPSED_KEY = "fondik.finance-panels-collapsed";
 const LEGACY_FINANCE_PANELS_COLLAPSED_KEY = "money-system.finance-panels-collapsed";
 const DISTRIBUTION_EXPANDED_KEY = "fondik.distribution-expanded";
 const LEGACY_DISTRIBUTION_EXPANDED_KEY = "money-system.distribution-expanded";
+const LEGACY_HASH_ROUTES = {
+  "#dashboard": "/dashboard",
+  "#history": "/history",
+  "#funds": "/funds",
+  "#settings": "/settings",
+  "#onboarding": "/month-brief",
+  "#account": "/settings",
+  "#cabinet": "/settings"
+};
+const PRIVATE_ROUTE_PATHS = new Set([
+  "/app.html",
+  "/dashboard",
+  "/funds",
+  "/history",
+  "/month-brief",
+  "/settings"
+]);
 const FUND_TYPES = ["saving", "spending", "debt", "reserve", "business", "required"];
 const PRIORITY_LABELS = {
   5: "Критично",
@@ -142,7 +159,11 @@ let heroSlideIndex = 0;
 let heroSliderTimer = null;
 collapsedFinancePanels.add("mode");
 const collapsedCategories = new Set();
-const isPrivateAppPage = window.location.pathname.endsWith("app.html");
+const legacyPath = LEGACY_HASH_ROUTES[window.location.hash];
+if (legacyPath) {
+  history.replaceState({}, "", legacyPath);
+}
+const isPrivateAppPage = PRIVATE_ROUTE_PATHS.has(window.location.pathname) || window.location.pathname.endsWith("/app.html");
 
 const els = {
   authModal: document.querySelector("#authModal"),
@@ -1813,7 +1834,7 @@ function renderAuthState() {
 }
 
 function redirectToLogin() {
-  window.location.href = "index.html#login";
+  window.location.href = "/login";
 }
 
 function withTimeout(promise, ms, label = "Операция") {
@@ -1826,19 +1847,27 @@ function withTimeout(promise, ms, label = "Операция") {
 }
 
 function currentRoute() {
-  return window.location.hash.replace(/^#\/?/, "") || "";
+  return window.location.pathname.replace(/^\/+|\/+$/g, "") || "";
 }
 
-function routeToHash(screen) {
-  return `#${screen}`;
+function pathForScreen(screen) {
+  const paths = {
+    account: "/settings",
+    dashboard: "/dashboard",
+    history: "/history"
+  };
+  return paths[screen] || "/dashboard";
 }
 
 function screenFromRoute(route = currentRoute()) {
   const normalized = route.split("?")[0];
-  if (["account", "cabinet"].includes(normalized)) {
+  if (["account", "cabinet", "settings"].includes(normalized)) {
     return "account";
   }
-  if (["dashboard", "history"].includes(normalized)) {
+  if (["dashboard", "funds", "month-brief"].includes(normalized)) {
+    return "dashboard";
+  }
+  if (normalized === "history") {
     return normalized;
   }
   return "dashboard";
@@ -1846,25 +1875,49 @@ function screenFromRoute(route = currentRoute()) {
 
 function isPrivateRoute(route = currentRoute()) {
   const normalized = route.split("?")[0];
-  return ["account", "cabinet", "dashboard", "history"].includes(normalized);
+  return ["account", "cabinet", "dashboard", "funds", "history", "month-brief", "settings"].includes(normalized);
+}
+
+function navigate(path, options = {}) {
+  const nextPath = path.startsWith("/") ? path : `/${path}`;
+  if (window.location.pathname !== nextPath) {
+    const method = options.replace ? "replaceState" : "pushState";
+    history[method]({}, "", nextPath);
+  }
+  applyRoute();
+}
+
+function applyRouteSideEffects(route) {
+  const normalized = route.split("?")[0];
+  if (normalized === "funds") {
+    document.querySelector(".funds-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  if (normalized === "month-brief") {
+    window.setTimeout(() => openMonthBrief(), 0);
+  }
 }
 
 function applyRoute() {
   const route = currentRoute();
   if (!session?.user?.id) {
     renderAuthState();
-    if (route === "login" || route === "signup") {
+    if (isPrivateRoute(route)) {
+      redirectToLogin();
+      return;
+    }
+    if (route === "login" || route === "register") {
       openAuthModal();
     }
     return;
   }
 
   if (!isPrivateRoute(route)) {
-    switchScreen("dashboard");
+    navigate("/dashboard", { replace: true });
     return;
   }
 
-  switchScreen(screenFromRoute(route), { skipHash: true });
+  switchScreen(screenFromRoute(route), { skipHistory: true });
+  applyRouteSideEffects(route);
 }
 
 function demoAmountValue() {
@@ -3681,12 +3734,15 @@ function applyBriefing() {
 
 function switchScreen(screen, options = {}) {
   const nextScreen = els.screens[screen] ? screen : "dashboard";
+  const nextPath = options.skipHistory === true ? window.location.pathname : pathForScreen(nextScreen);
   Object.entries(els.screens).forEach(([key, node]) => {
     node.classList.toggle("is-visible", key === nextScreen);
   });
 
   els.navButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.screen === nextScreen);
+    const route = button.dataset.route;
+    const isActive = route ? route === nextPath : button.dataset.screen === nextScreen;
+    button.classList.toggle("is-active", isActive);
   });
 
   const titles = {
@@ -3696,8 +3752,10 @@ function switchScreen(screen, options = {}) {
   };
   els.screenTitle.textContent = titles[nextScreen];
 
-  if (options.skipHash !== true && window.location.hash !== routeToHash(nextScreen)) {
-    window.location.hash = routeToHash(nextScreen);
+  if (options.skipHistory !== true) {
+    if (window.location.pathname !== nextPath) {
+      history.pushState({}, "", nextPath);
+    }
   }
 }
 
@@ -3735,10 +3793,17 @@ function showToast(message) {
 }
 
 els.navButtons.forEach((button) => {
-  button.addEventListener("click", () => switchScreen(button.dataset.screen));
+  button.addEventListener("click", () => {
+    const route = button.dataset.route;
+    if (route) {
+      navigate(route);
+      return;
+    }
+    switchScreen(button.dataset.screen);
+  });
 });
 
-window.addEventListener("hashchange", applyRoute);
+window.addEventListener("popstate", applyRoute);
 
 function openAuthModal() {
   if (session?.user?.id) {

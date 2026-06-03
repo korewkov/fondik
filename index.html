@@ -31,16 +31,16 @@
 
   <div class="public-shell" id="publicShell">
     <header class="public-header">
-      <a class="brand public-brand" href="#top" aria-label="Фондик">
+      <a class="brand public-brand" href="/" data-public-route aria-label="Фондик">
         <img class="brand-lockup" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
       </a>
       <nav class="public-nav" aria-label="Публичная навигация">
         <a href="#howItWorks">Как работает</a>
         <a href="#features">Возможности</a>
-        <a href="#demo">Демо</a>
+        <a href="/demo" data-public-route>Демо</a>
       </nav>
       <div class="public-auth-actions">
-        <button class="primary-btn compact" data-auth-trigger type="button">Войти</button>
+        <a class="primary-btn compact" href="/login" data-auth-trigger>Войти</a>
         <button class="ghost-btn compact is-hidden" id="publicLogoutBtn" type="button">Выйти</button>
       </div>
     </header>
@@ -52,8 +52,8 @@
           <img class="hero-wordmark" src="assets/fondik-wordmark-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
           <p>Создайте фонды для обязательных платежей, резерва, целей и личных трат. Укажите проценты один раз, а затем распределяйте каждое поступление без таблиц и ручной рутины.</p>
           <div class="hero-actions">
-            <button class="primary-btn" data-auth-trigger type="button">Начать с аккаунтом</button>
-            <a class="ghost-btn" href="#demo">Посмотреть демо</a>
+            <a class="primary-btn" href="/login" data-auth-trigger>Начать с аккаунтом</a>
+            <a class="ghost-btn" href="/demo" data-public-route>Посмотреть демо</a>
           </div>
         </div>
         <div class="hero-preview" aria-label="Пример распределения дохода">

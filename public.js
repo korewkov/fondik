@@ -6,6 +6,7 @@ const SUPABASE_CONFIG = {
 const SESSION_STORAGE_KEY = "fondik.supabase-session";
 const LEGACY_SESSION_STORAGE_KEY = "money-system.supabase-session";
 const SUPABASE_PROXY_PATH = "/api/supabase";
+const PUBLIC_ROUTES = new Set(["/", "/login", "/register", "/demo"]);
 
 const demoFunds = [
   { id: "required", name: "Обязательные платежи", color: "#3b82f6", percent: 30 },
@@ -240,7 +241,15 @@ function hasStoredSession() {
 }
 
 function redirectToApp() {
-  window.location.href = "app.html#dashboard";
+  window.location.href = "/dashboard";
+}
+
+function navigate(path, options = {}) {
+  if (window.location.pathname !== path) {
+    const method = options.replace ? "replaceState" : "pushState";
+    history[method]({}, "", path);
+  }
+  applyPublicRoute();
 }
 
 async function signIn(email, password) {
@@ -293,7 +302,10 @@ function openAuthModal() {
 }
 
 els.authTriggerButtons.forEach((button) => {
-  button.addEventListener("click", openAuthModal);
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigate(button.getAttribute("href") || "/login");
+  });
 });
 
 els.publicLogoutBtn.addEventListener("click", () => {
@@ -351,6 +363,30 @@ els.demoResult.addEventListener("input", (event) => {
   }
 });
 
+document.querySelectorAll("[data-public-route]").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    const href = link.getAttribute("href");
+    if (!href || !PUBLIC_ROUTES.has(href)) {
+      return;
+    }
+    event.preventDefault();
+    navigate(href);
+  });
+});
+
+function applyPublicRoute() {
+  const path = window.location.pathname;
+  if (path === "/login" || path === "/register") {
+    openAuthModal();
+    return;
+  }
+  if (path === "/demo") {
+    document.querySelector("#demo")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+window.addEventListener("popstate", applyPublicRoute);
+
 if (hasStoredSession()) {
   document.querySelectorAll("[data-auth-trigger]").forEach((button) => {
     button.textContent = "В кабинет";
@@ -359,3 +395,4 @@ if (hasStoredSession()) {
 }
 
 renderDemo();
+applyPublicRoute();
