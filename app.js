@@ -12,6 +12,7 @@ const LEGACY_STATE_CONFIG = {
 
 const SESSION_STORAGE_KEY = "money-system.supabase-session";
 const REQUIRED_INCOME_VISIBILITY_KEY = "money-system.required-income-hidden";
+const FINANCE_PANELS_COLLAPSED_KEY = "money-system.finance-panels-collapsed";
 const FUND_CATEGORIES = [
   "Кредиты",
   "Обязательные платежи",
@@ -115,6 +116,7 @@ let briefingStep = 0;
 let hasAutoOfferedBriefing = false;
 let lastOverflow = null;
 let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY);
+let collapsedFinancePanels = readCollapsedFinancePanels();
 const collapsedCategories = new Set();
 const isPrivateAppPage = window.location.pathname.endsWith("app.html");
 
@@ -763,6 +765,23 @@ function writeBooleanPreference(key, value) {
   }
 }
 
+function readCollapsedFinancePanels() {
+  try {
+    const value = JSON.parse(globalThis.localStorage?.getItem(FINANCE_PANELS_COLLAPSED_KEY) || "[]");
+    return new Set(Array.isArray(value) ? value : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeCollapsedFinancePanels() {
+  try {
+    globalThis.localStorage?.setItem(FINANCE_PANELS_COLLAPSED_KEY, JSON.stringify([...collapsedFinancePanels]));
+  } catch {
+    // Collapsed state is only a UI preference; the calculations stay available.
+  }
+}
+
 function writeStoredSession(nextSession) {
   try {
     globalThis.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
@@ -1135,26 +1154,22 @@ function renderFinanceMode() {
   const pausedFunds = finance.systemPausedFunds
     .filter((fund) => isFundSystemPaused(fund, finance))
     .map((fund) => fund.name);
-  els.financeModePanel.className = `finance-mode-panel mode-${finance.mode === "Антикризисный" ? "crisis" : finance.mode === "Стабилизация" ? "stable" : "growth"}`;
-  els.financeModePanel.innerHTML = `
-    <div>
-      <span>Текущий режим</span>
-      <strong>${escapeHtml(finance.mode)}</strong>
-      <p>${finance.requiredPercent}% дохода уходит на обязательные платежи.</p>
-    </div>
-    <div>
-      <span>Доход месяца</span>
-      <strong>${money(finance.monthlyIncome)}</strong>
-      <p>Обязательные платежи: ${money(finance.requiredPayments)}. Минимум жизни: ${money(finance.minimumLifeExpenses)}.</p>
-    </div>
-    <div>
-      <span>Автопаузы</span>
-      <strong>${pausedFunds.length}</strong>
-      <p>${pausedFunds.length
-        ? `Система временно заморозила: ${escapeHtml(pausedFunds.join(", "))}.`
-        : "Системных пауз на этот месяц нет."}</p>
-    </div>
-  `;
+  const collapsed = collapsedFinancePanels.has("mode");
+  els.financeModePanel.className = `finance-card finance-mode-panel mode-${finance.mode === "Антикризисный" ? "crisis" : finance.mode === "Стабилизация" ? "stable" : "growth"} ${collapsed ? "is-collapsed" : ""}`;
+  els.financeModePanel.innerHTML = collapsed
+    ? renderCollapsedFinanceCard("mode", "Режим", finance.mode, `${finance.requiredPercent}%`)
+    : `
+      <div class="finance-card-head">
+        <span>Режим</span>
+        <button class="icon-btn compact-icon" type="button" data-collapse-finance-panel="mode" aria-label="Скрыть режим">×</button>
+      </div>
+      <div class="finance-card-main">
+        <strong>${escapeHtml(finance.mode)}</strong>
+        <b>${finance.requiredPercent}%</b>
+      </div>
+      <p>Платежи ${money(finance.requiredPayments)} · жизнь ${money(finance.minimumLifeExpenses)} · паузы ${pausedFunds.length}</p>
+      ${pausedFunds.length ? `<small>${escapeHtml(pausedFunds.join(", "))}</small>` : ""}
+    `;
 }
 
 function renderFreeBalance() {
@@ -1163,15 +1178,22 @@ function renderFreeBalance() {
   }
 
   const finance = calculateMonthlyFinance();
-  els.freeBalancePanel.className = `free-balance-panel ${finance.freeBalance < 0 ? "is-negative" : "is-positive"}`;
-  els.freeBalancePanel.innerHTML = finance.freeBalance < 0
-    ? `
-      <strong>Свободного остатка нет: ${money(finance.freeBalance)}.</strong>
-      <p>Сейчас нельзя планировать новые покупки. Нужен дополнительный доход, перенос платежа или реструктуризация.</p>
-    `
+  const collapsed = collapsedFinancePanels.has("balance");
+  const title = finance.freeBalance < 0 ? "Остатка нет" : "Свободно";
+  els.freeBalancePanel.className = `finance-card free-balance-panel ${finance.freeBalance < 0 ? "is-negative" : "is-positive"} ${collapsed ? "is-collapsed" : ""}`;
+  els.freeBalancePanel.innerHTML = collapsed
+    ? renderCollapsedFinanceCard("balance", title, money(finance.freeBalance), "Остаток")
     : `
-      <strong>Свободный остаток: ${money(finance.freeBalance)}.</strong>
-      <p>Эти деньги можно распределить между резервом, целями и досрочным погашением долгов.</p>
+      <div class="finance-card-head">
+        <span>${title}</span>
+        <button class="icon-btn compact-icon" type="button" data-collapse-finance-panel="balance" aria-label="Скрыть свободный остаток">×</button>
+      </div>
+      <div class="finance-card-main">
+        <strong>${money(finance.freeBalance)}</strong>
+      </div>
+      <p>${finance.freeBalance < 0
+        ? "Новые покупки на паузу: нужен доход, перенос платежа или реструктуризация."
+        : "Можно распределить между резервом, целями и досрочным погашением."}</p>
     `;
 }
 
@@ -1189,10 +1211,10 @@ function financeWarnings() {
   state.funds.filter(isDebtFund).forEach((fund) => {
     const debt = debtCalculations(fund);
     if (debt.annualRate > 40) {
-      warnings.push(`Опасный долг: ${escapeHtml(fund.name)} со ставкой выше 40% годовых. Проверьте возможность реструктуризации.`);
+      warnings.push(`Опасный долг: ${fund.name} со ставкой выше 40% годовых. Проверьте возможность реструктуризации.`);
     }
     if (debt.minPayment > 0 && debt.debtBalance > 0 && (debt.principalPayment <= 0 || debt.principalPayment < debt.minPayment * 0.3)) {
-      warnings.push(`Платеж ${money(debt.minPayment)} по ${escapeHtml(fund.name)} почти не снижает долг. При ставке ${debt.annualRate}% долг ${money(debt.debtBalance)} начисляет около ${money(debt.monthlyInterest)} процентов в месяц. Минимальный платеж может не уменьшать тело долга.`);
+      warnings.push(`Платеж ${money(debt.minPayment)} по ${fund.name} почти не снижает долг. При ставке ${debt.annualRate}% долг ${money(debt.debtBalance)} начисляет около ${money(debt.monthlyInterest)} процентов в месяц. Минимальный платеж может не уменьшать тело долга.`);
     }
   });
 
@@ -1200,7 +1222,7 @@ function financeWarnings() {
     state.funds
       .filter((fund) => isSystemPauseRecommended(fund, finance.mode) && isSystemPauseDismissed(fund) && Number(fund.percent || 0) > 0)
       .forEach((fund) => {
-        warnings.push(`Фонд низкого приоритета: ${escapeHtml(fund.name)}. В антикризисном режиме лучше направить деньги в проблемный долг.`);
+        warnings.push(`Фонд низкого приоритета: ${fund.name}. В антикризисном режиме лучше направить деньги в проблемный долг.`);
       });
   }
 
@@ -1214,17 +1236,50 @@ function renderFinanceWarnings() {
 
   const warnings = financeWarnings();
   els.financeWarningsPanel.classList.toggle("is-hidden", !warnings.length);
-  els.financeWarningsPanel.innerHTML = warnings.length
-    ? `
-      <div class="finance-warnings-head">
-        <span>Финансовые предупреждения</span>
-        <strong>${warnings.length}</strong>
+  if (!warnings.length) {
+    els.financeWarningsPanel.innerHTML = "";
+    return;
+  }
+
+  const collapsed = collapsedFinancePanels.has("warnings");
+  els.financeWarningsPanel.className = `finance-card finance-warnings-panel ${collapsed ? "is-collapsed" : ""}`;
+  els.financeWarningsPanel.innerHTML = collapsed
+    ? renderCollapsedFinanceCard("warnings", "Предупреждения", String(warnings.length), "Открыть")
+    : `
+      <div class="finance-card-head">
+        <span>Предупреждения</span>
+        <button class="icon-btn compact-icon" type="button" data-collapse-finance-panel="warnings" aria-label="Скрыть предупреждения">×</button>
       </div>
-      <ul>
-        ${warnings.map((warning) => `<li>${warning}</li>`).join("")}
-      </ul>
-    `
-    : "";
+      <div class="finance-card-main">
+        <strong>${warnings.length}</strong>
+        <b>${escapeHtml(warnings[0])}</b>
+      </div>
+      ${warnings.length > 1
+        ? `<ul>${warnings.slice(1).map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}</ul>`
+        : ""}
+    `;
+}
+
+function renderCollapsedFinanceCard(key, label, value, meta) {
+  return `
+    <button class="finance-card-toggle" type="button" data-expand-finance-panel="${key}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(meta)}</small>
+    </button>
+  `;
+}
+
+function toggleFinancePanel(key, collapsed) {
+  if (collapsed) {
+    collapsedFinancePanels.add(key);
+  } else {
+    collapsedFinancePanels.delete(key);
+  }
+  writeCollapsedFinancePanels();
+  renderFinanceMode();
+  renderFreeBalance();
+  renderFinanceWarnings();
 }
 
 function renderAccount() {
@@ -3154,6 +3209,18 @@ els.requiredIncomePanel.addEventListener("click", (event) => {
   isRequiredIncomeHidden = true;
   writeBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY, true);
   renderRequiredIncome();
+});
+
+document.querySelector(".finance-alerts-row")?.addEventListener("click", (event) => {
+  const collapseKey = event.target.closest("[data-collapse-finance-panel]")?.dataset.collapseFinancePanel;
+  const expandKey = event.target.closest("[data-expand-finance-panel]")?.dataset.expandFinancePanel;
+  if (collapseKey) {
+    toggleFinancePanel(collapseKey, true);
+    return;
+  }
+  if (expandKey) {
+    toggleFinancePanel(expandKey, false);
+  }
 });
 
 els.briefingForm.addEventListener("input", renderBriefingPreview);
