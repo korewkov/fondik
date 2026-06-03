@@ -3257,14 +3257,121 @@ function shouldOfferBriefing(nextState = state) {
     && !nextState.history.length
     && !nextState.months.length;
 }
+function openQuickStart() {
+  const modal = document.querySelector("#quickStartModal");
+  if (!modal) return;
 
+  let currentStep = 0;
+  let qsOverdue = false;
+
+  const steps = modal.querySelectorAll("[data-qs-step]");
+  const dots = modal.querySelectorAll(".qs-dots span");
+  const nextBtn = modal.querySelector("#qsNextBtn");
+  const applyBtn = modal.querySelector("#qsApplyBtn");
+  const skipBtn = modal.querySelector("#qsSkipBtn");
+
+  function showStep(index) {
+    steps.forEach((step, i) => {
+      step.classList.toggle("is-active", i === index);
+    });
+    dots.forEach((dot, i) => {
+      dot.classList.toggle("is-active", i === index);
+    });
+
+    const isLast = index === steps.length - 1;
+    nextBtn.classList.toggle("is-hidden", isLast);
+    applyBtn.classList.toggle("is-hidden", !isLast);
+
+    if (isLast) {
+      renderQsResult();
+    }
+  }
+
+  function renderQsResult() {
+    const income = roundMoney(document.querySelector("#qsIncome").value) || 0;
+    const obligations = roundMoney(document.querySelector("#qsObligations").value) || 0;
+    const requiredPercent = income > 0 ? Math.round(obligations / income * 100) : obligations > 0 ? 100 : 0;
+    const mode = qsOverdue || requiredPercent >= 70
+      ? "Антикризисный"
+      : requiredPercent >= 50
+        ? "Стабилизация"
+        : "Развитие";
+
+    const modeClass = mode === "Антикризисный" ? "is-crisis" : mode === "Стабилизация" ? "is-stable" : "is-growth";
+
+    const modeText = mode === "Антикризисный"
+      ? "Сейчас главное — защитить обязательные платежи и не допустить новых просрочек."
+      : mode === "Стабилизация"
+        ? "Ситуация управляемая. Держим платежи под контролем и начинаем строить резерв."
+        : "Хорошая база. Можно активно двигать цели и наращивать резерв.";
+
+    const tip = mode === "Антикризисный"
+      ? "💡 Сначала настрой фонды для обязательных платежей и долгов — система сама поставит остальное на паузу."
+      : mode === "Стабилизация"
+        ? "💡 Начни с фонда резерва — даже небольшая подушка снижает стресс и защищает от новых долгов."
+        : "💡 Настрой фонды под свои цели — система будет автоматически делить каждое поступление.";
+
+    const result = document.querySelector("#qsResult");
+    result.innerHTML = `
+      <div class="qs-result-mode ${modeClass}">
+        <span>Твой режим</span>
+        <strong>${mode}</strong>
+        <p>${modeText}</p>
+      </div>
+      <div class="qs-result-tip">${tip}</div>
+    `;
+  }
+
+  modal.querySelectorAll(".qs-choice-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      modal.querySelectorAll(".qs-choice-btn").forEach((b) => b.classList.remove("is-selected"));
+      btn.classList.add("is-selected");
+      qsOverdue = btn.dataset.qsChoice === "true";
+
+      setTimeout(() => {
+        currentStep = 3;
+        showStep(currentStep);
+      }, 300);
+    });
+  });
+
+  nextBtn.addEventListener("click", () => {
+    if (currentStep < 2) {
+      currentStep++;
+      showStep(currentStep);
+    }
+  });
+
+  skipBtn.addEventListener("click", () => {
+    modal.close();
+    state.briefing = state.briefing || { skippedQuickStart: true, completedAt: new Date().toISOString() };
+    saveState();
+  });
+
+  applyBtn.addEventListener("click", () => {
+    modal.close();
+    state.briefing = state.briefing || { skippedQuickStart: true, completedAt: new Date().toISOString() };
+    saveState();
+    openBriefing({ skipPermissionCheck: true });
+  });
+
+  showStep(0);
+  modal.showModal();
+}
+
+function shouldOfferQuickStart() {
+  return Boolean(session?.user?.id)
+    && isStorageReady
+    && !state.briefing
+    && hasStandardFundsOnly();
+}
 function maybeOfferBriefing() {
-  if (hasAutoOfferedBriefing || !shouldOfferBriefing() || els.briefingModal.open) {
+  if (hasAutoOfferedBriefing || (!shouldOfferBriefing() && !shouldOfferQuickStart()) || els.briefingModal.open) {
     return;
   }
 
   hasAutoOfferedBriefing = true;
-  window.setTimeout(() => openBriefing({ skipPermissionCheck: true }), 250);
+  window.setTimeout(() => openQuickStart(), 250);
 }
 
 function openBriefing(options = {}) {
