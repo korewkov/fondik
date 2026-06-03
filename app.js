@@ -1556,10 +1556,11 @@ function heroSlidesFor({ finance, progress }) {
         `Доход месяца: ${money(finance.monthlyIncome)}`,
         `Обязательные платежи: ${money(finance.requiredPayments)}`,
         `Минимум на жизнь: ${money(finance.minimumLifeExpenses)}`,
-        `Нужный доход по активным фондам: ${money(required.total)}`
+        ...required.buckets.map((bucket) => `${bucket.label}: ${money(bucket.amount)}`),
+        `Итого нужно заработать: ${money(required.total)}`
       ],
-      action: "Показать расчет дохода",
-      actionType: "required-income"
+      action: "",
+      actionType: ""
     },
     {
       key: finance.freeBalance < 0 ? "free-negative" : "free-positive",
@@ -1716,6 +1717,13 @@ function requiredIncomeSummary(includeFrozen = false) {
 }
 
 function renderRequiredIncome() {
+  if (els.heroSlider) {
+    els.requiredIncomePanel.classList.add("is-hidden");
+    els.requiredIncomePanel.innerHTML = "";
+    els.showRequiredIncomeBtn.classList.add("is-hidden");
+    return;
+  }
+
   els.requiredIncomePanel.classList.toggle("is-hidden", isRequiredIncomeHidden);
   els.showRequiredIncomeBtn.classList.toggle("is-hidden", !isRequiredIncomeHidden);
   if (isRequiredIncomeHidden) {
@@ -3903,13 +3911,6 @@ els.heroSlider?.addEventListener("click", (event) => {
     return;
   }
   const action = event.target.closest("[data-hero-action]")?.dataset.heroAction;
-  if (action === "required-income") {
-    isRequiredIncomeHidden = false;
-    writeBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY, false);
-    renderRequiredIncome();
-    els.requiredIncomePanel?.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
-  }
   if (action === "warnings") {
     areWarningsExpanded = true;
     renderFinanceWarnings();
