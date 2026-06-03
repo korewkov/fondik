@@ -4,24 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Фондик</title>
-  <link rel="icon" type="image/png" href="assets/favicon.png">
-  <link rel="apple-touch-icon" href="assets/favicon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260604-1">
+  <link rel="icon" type="image/svg+xml" href="assets/fondik-mark.svg">
+  <link rel="apple-touch-icon" href="assets/fondik-apple-touch.png">
+  <link rel="stylesheet" href="style.css?v=20260604-2">
 </head>
 <body>
   <dialog class="auth-modal" id="authModal">
     <div class="auth-card">
       <button class="icon-btn auth-close" id="authCloseBtn" type="button" aria-label="Закрыть">×</button>
-      <div class="brand auth-brand">
-        <img class="brand-logo" src="assets/logo.png" alt="">
-        <div>
-          <strong>Фондик</strong>
-          <span>деньги на местах</span>
-        </div>
+      <div class="auth-brand">
+        <img class="auth-brand-logo" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
       </div>
       <p class="eyebrow">Вход в личный кабинет</p>
-      <h1>Фондик</h1>
-      <p class="auth-copy">Фондик — деньги сразу попадают на свои места.</p>
       <p class="auth-copy">Зарегистрируйтесь или войдите, чтобы фонды, история и прогресс сохранялись отдельно для вашего аккаунта.</p>
       <form class="auth-form" id="authForm">
         <input id="authEmail" type="email" autocomplete="email" placeholder="Email" required>
@@ -38,11 +32,7 @@
   <div class="public-shell" id="publicShell">
     <header class="public-header">
       <a class="brand public-brand" href="#top" aria-label="Фондик">
-        <img class="brand-logo" src="assets/logo.png" alt="">
-        <div>
-          <strong>Фондик</strong>
-          <span>деньги на местах</span>
-        </div>
+        <img class="brand-lockup" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
       </a>
       <nav class="public-nav" aria-label="Публичная навигация">
         <a href="#howItWorks">Как работает</a>
@@ -59,8 +49,7 @@
       <section class="public-hero">
         <div class="hero-copy">
           <p class="eyebrow">Личные фонды</p>
-          <h1>Фондик</h1>
-          <p class="hero-slogan">Фондик — деньги сразу попадают на свои места.</p>
+          <img class="hero-wordmark" src="assets/fondik-wordmark-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
           <p>Создайте фонды для обязательных платежей, резерва, целей и личных трат. Укажите проценты один раз, а затем распределяйте каждое поступление без таблиц и ручной рутины.</p>
           <div class="hero-actions">
             <button class="primary-btn" data-auth-trigger type="button">Начать с аккаунтом</button>

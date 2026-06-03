@@ -104,6 +104,10 @@ input[type="file"] {
   text-decoration: none;
 }
 
+.public-brand .brand-lockup {
+  width: clamp(240px, 22vw, 340px);
+}
+
 .public-nav {
   display: flex;
   flex-wrap: wrap;
@@ -160,12 +164,11 @@ input[type="file"] {
   line-height: 1.65;
 }
 
-.hero-slogan {
-  margin: -8px 0 12px;
-  color: var(--ink);
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1.35;
+.hero-wordmark {
+  display: block;
+  width: min(560px, 100%);
+  height: auto;
+  margin: 6px 0 22px;
 }
 
 .hero-actions {
@@ -501,7 +504,14 @@ input[type="file"] {
 }
 
 .auth-brand {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
+  padding-right: 46px;
+}
+
+.auth-brand-logo {
+  display: block;
+  width: min(360px, 100%);
+  height: auto;
 }
 
 .auth-card h1 {
@@ -561,6 +571,13 @@ input[type="file"] {
   align-items: center;
   gap: 12px;
   margin-bottom: 0;
+}
+
+.brand-lockup {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  height: auto;
 }
 
 .brand-mark {
@@ -2927,9 +2944,12 @@ body {
   border-bottom: 0;
 }
 
-.topbar .eyebrow,
-.topbar-brand .brand {
+.topbar .eyebrow {
   display: none;
+}
+
+.dashboard-brand-logo {
+  width: clamp(220px, 20vw, 320px);
 }
 
 .topbar h1 {

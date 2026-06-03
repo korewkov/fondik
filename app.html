@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Фондик</title>
-  <link rel="icon" type="image/png" href="assets/favicon.png">
-  <link rel="apple-touch-icon" href="assets/favicon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260604-1">
+  <link rel="icon" type="image/svg+xml" href="assets/fondik-mark.svg">
+  <link rel="apple-touch-icon" href="assets/fondik-apple-touch.png">
+  <link rel="stylesheet" href="style.css?v=20260604-2">
   <script>
     window.__moneyAppShowBootError = (error) => {
       const message = error?.message || String(error || "неизвестная ошибка");
@@ -40,11 +40,7 @@
 <body>
   <div class="app-loading" id="appLoading" role="status">
     <div class="brand">
-      <img class="brand-logo" src="assets/logo.png" alt="">
-      <div>
-        <strong>Фондик</strong>
-        <span>загрузка кабинета</span>
-      </div>
+      <img class="brand-lockup" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
     </div>
     <p>Восстанавливаем сессию и загружаем ваши фонды.</p>
     <a class="ghost-btn compact" href="index.html#login">Вернуться ко входу</a>
@@ -53,16 +49,10 @@
   <dialog class="auth-modal" id="authModal">
     <div class="auth-card">
       <button class="icon-btn auth-close" id="authCloseBtn" type="button" aria-label="Закрыть">×</button>
-      <div class="brand auth-brand">
-        <img class="brand-logo" src="assets/logo.png" alt="">
-        <div>
-          <strong>Фондик</strong>
-          <span>деньги на местах</span>
-        </div>
+      <div class="auth-brand">
+        <img class="auth-brand-logo" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
       </div>
       <p class="eyebrow">Вход в личный кабинет</p>
-      <h1>Фондик</h1>
-      <p class="auth-copy">Фондик — деньги сразу попадают на свои места.</p>
       <p class="auth-copy">Зарегистрируйтесь или войдите, чтобы фонды, история и прогресс сохранялись отдельно для вашего аккаунта.</p>
       <form class="auth-form" id="authForm">
         <input id="authEmail" type="email" autocomplete="email" placeholder="Email" required>
@@ -81,11 +71,7 @@
       <header class="topbar">
         <div class="topbar-brand">
           <div class="brand">
-            <img class="brand-logo" src="assets/logo.png" alt="">
-            <div>
-              <strong>Фондик</strong>
-              <span>деньги на местах</span>
-            </div>
+            <img class="brand-lockup dashboard-brand-logo" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
           </div>
           <div>
             <p class="eyebrow">Фондик — деньги сразу попадают на свои места.</p>
