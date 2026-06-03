@@ -133,6 +133,7 @@ let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KE
 let collapsedFinancePanels = readCollapsedFinancePanels();
 let isDistributionExpanded = readBooleanPreference(DISTRIBUTION_EXPANDED_KEY);
 let areWarningsExpanded = false;
+collapsedFinancePanels.add("mode");
 const collapsedCategories = new Set();
 const isPrivateAppPage = window.location.pathname.endsWith("app.html");
 
@@ -1460,20 +1461,10 @@ function renderMonthSummary() {
   const remaining = Math.max(0, roundMoney(monthTarget - monthBalance));
   const progress = monthTarget ? Math.min(100, Math.round(monthBalance / monthTarget * 100)) : 0;
   els.monthSummaryCard.innerHTML = `
-    <div class="kpi-card kpi-income">
-      <span>Доход за месяц</span>
-      <strong>${money(finance.monthlyIncome)}</strong>
-      <small>ожидаемый доход</small>
-    </div>
     <div class="kpi-card kpi-required">
       <span>Обязательные платежи</span>
       <strong>${money(finance.requiredPayments)}</strong>
       <small>${finance.requiredPercent}% от дохода</small>
-    </div>
-    <div class="kpi-card kpi-life">
-      <span>Минимум на жизнь</span>
-      <strong>${money(finance.minimumLifeExpenses)}</strong>
-      <small>базовые расходы</small>
     </div>
     <div class="kpi-card ${finance.freeBalance < 0 ? "kpi-negative" : "kpi-positive"}">
       <span>Свободный остаток</span>
@@ -2003,19 +1994,18 @@ function renderDistribution() {
     .sort((a, b) => Number(b.percent || 0) - Number(a.percent || 0))
     .slice(0, 3);
   els.distributionCompact.innerHTML = `
-    <div>
-      <span>В фондах</span>
-      <strong>${totalPercent()}%</strong>
-    </div>
-    <div>
-      <span>Активно</span>
-      <strong>${active.length}</strong>
-    </div>
-    <div class="top-distribution">
-      <span>Топ-3</span>
+    <div class="distribution-mini-card">
+      <div class="distribution-mini-head">
+        <span>В фондах</span>
+        <strong>${totalPercent()}%</strong>
+        <small>${active.length} фондов</small>
+      </div>
+      <div class="top-distribution">
+        <span>Топ-3</span>
       ${topFunds.length ? topFunds.map((fund) => `
         <b><i class="legend-dot" style="--dot: ${fund.color}"></i>${escapeHtml(fund.name)} ${fund.percent}%</b>
       `).join("") : "<b>Нет активных фондов</b>"}
+      </div>
     </div>
   `;
   els.distributionLegend.innerHTML = funds.map((fund) => `
@@ -3732,7 +3722,7 @@ els.requiredIncomePanel.addEventListener("click", (event) => {
   renderRequiredIncome();
 });
 
-document.querySelector(".finance-alerts-row")?.addEventListener("click", (event) => {
+document.querySelector(".dashboard-summary-row")?.addEventListener("click", (event) => {
   const collapseKey = event.target.closest("[data-collapse-finance-panel]")?.dataset.collapseFinancePanel;
   const expandKey = event.target.closest("[data-expand-finance-panel]")?.dataset.expandFinancePanel;
   const toggleWarnings = event.target.closest("[data-toggle-warnings]");
