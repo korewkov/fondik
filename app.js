@@ -3360,18 +3360,34 @@ function openQuickStart() {
 }
 
 function shouldOfferQuickStart() {
+  const hasRealHistory = state.history.filter(
+    (item) => item.type === "Доход" || item.type === "Пополнение"
+  ).length > 0;
+
   return Boolean(session?.user?.id)
     && isStorageReady
     && !state.briefing
-    && hasStandardFundsOnly();
+    && !hasRealHistory;
 }
 function maybeOfferBriefing() {
-  if (hasAutoOfferedBriefing || (!shouldOfferBriefing() && !shouldOfferQuickStart()) || els.briefingModal.open) {
+  if (hasAutoOfferedBriefing) {
     return;
   }
 
-  hasAutoOfferedBriefing = true;
-  window.setTimeout(() => openQuickStart(), 250);
+  if (els.briefingModal.open) {
+    return;
+  }
+
+  if (shouldOfferQuickStart()) {
+    hasAutoOfferedBriefing = true;
+    window.setTimeout(() => openQuickStart(), 250);
+    return;
+  }
+
+  if (shouldOfferBriefing()) {
+    hasAutoOfferedBriefing = true;
+    window.setTimeout(() => openBriefing({ skipPermissionCheck: true }), 250);
+  }
 }
 
 function openBriefing(options = {}) {
