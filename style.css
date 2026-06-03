@@ -4775,3 +4775,147 @@ body {
   border-color: var(--blue);
   color: var(--ink);
 }
+/* Быстрый старт */
+.quick-start-card {
+  max-width: 520px;
+}
+
+.quick-start-title {
+  margin: 8px 0 20px;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.quick-start-steps {
+  position: relative;
+  min-height: 110px;
+}
+
+.quick-start-step {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-start-step.is-active {
+  display: flex;
+}
+
+.quick-start-hint {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.qs-choice-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.qs-choice-btn {
+  min-height: 52px;
+  border: 2px solid var(--soft-line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.qs-choice-btn:hover {
+  border-color: var(--blue);
+  background: #eef8ff;
+}
+
+.qs-choice-btn.is-selected {
+  border-color: var(--blue);
+  background: #eef8ff;
+  color: var(--blue-dark);
+}
+
+.quick-start-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.qs-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.qs-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #c8d9eb;
+}
+
+.qs-dots span.is-active {
+  width: 28px;
+  background: var(--blue);
+}
+
+.qs-result {
+  display: grid;
+  gap: 10px;
+}
+
+.qs-result-mode {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #ffffff 0%, #eef8ff 100%);
+}
+
+.qs-result-mode span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.qs-result-mode strong {
+  font-size: 28px;
+  color: var(--blue-dark);
+}
+
+.qs-result-mode.is-crisis strong {
+  color: #d12f45;
+}
+
+.qs-result-mode.is-stable strong {
+  color: #9a6400;
+}
+
+.qs-result-mode.is-growth strong {
+  color: #167044;
+}
+
+.qs-result-mode p {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.qs-result-tip {
+  padding: 12px 14px;
+  border: 1px solid #f0c56d;
+  border-radius: var(--radius);
+  background: #fff9e4;
+  color: #7a5200;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
