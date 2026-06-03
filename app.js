@@ -10,11 +10,15 @@ const LEGACY_STATE_CONFIG = {
   id: "personal-finance"
 };
 
-const SESSION_STORAGE_KEY = "money-system.supabase-session";
+const SESSION_STORAGE_KEY = "fondik.supabase-session";
+const LEGACY_SESSION_STORAGE_KEY = "money-system.supabase-session";
 const SUPABASE_PROXY_PATH = "/api/supabase";
-const REQUIRED_INCOME_VISIBILITY_KEY = "money-system.required-income-hidden";
-const FINANCE_PANELS_COLLAPSED_KEY = "money-system.finance-panels-collapsed";
-const DISTRIBUTION_EXPANDED_KEY = "money-system.distribution-expanded";
+const REQUIRED_INCOME_VISIBILITY_KEY = "fondik.required-income-hidden";
+const LEGACY_REQUIRED_INCOME_VISIBILITY_KEY = "money-system.required-income-hidden";
+const FINANCE_PANELS_COLLAPSED_KEY = "fondik.finance-panels-collapsed";
+const LEGACY_FINANCE_PANELS_COLLAPSED_KEY = "money-system.finance-panels-collapsed";
+const DISTRIBUTION_EXPANDED_KEY = "fondik.distribution-expanded";
+const LEGACY_DISTRIBUTION_EXPANDED_KEY = "money-system.distribution-expanded";
 const FUND_TYPES = ["saving", "spending", "debt", "reserve", "business", "required"];
 const PRIORITY_LABELS = {
   5: "Критично",
@@ -130,9 +134,9 @@ let pendingResetAction = null;
 let briefingStep = 0;
 let hasAutoOfferedBriefing = false;
 let lastOverflow = null;
-let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY);
+let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY, LEGACY_REQUIRED_INCOME_VISIBILITY_KEY);
 let collapsedFinancePanels = readCollapsedFinancePanels();
-let isDistributionExpanded = readBooleanPreference(DISTRIBUTION_EXPANDED_KEY);
+let isDistributionExpanded = readBooleanPreference(DISTRIBUTION_EXPANDED_KEY, LEGACY_DISTRIBUTION_EXPANDED_KEY);
 let areWarningsExpanded = false;
 let heroSlideIndex = 0;
 let heroSliderTimer = null;
@@ -836,15 +840,23 @@ function clearSession() {
 
 function loadStoredSession() {
   try {
-    return normalizeSession(JSON.parse(globalThis.localStorage?.getItem(SESSION_STORAGE_KEY) || "null"));
+    const stored = globalThis.localStorage?.getItem(SESSION_STORAGE_KEY)
+      || globalThis.localStorage?.getItem(LEGACY_SESSION_STORAGE_KEY);
+    const parsed = normalizeSession(JSON.parse(stored || "null"));
+    if (parsed) {
+      writeStoredSession(parsed);
+    }
+    return parsed;
   } catch {
     return null;
   }
 }
 
-function readBooleanPreference(key) {
+function readBooleanPreference(key, legacyKey = null) {
   try {
-    return globalThis.localStorage?.getItem(key) === "true";
+    const value = globalThis.localStorage?.getItem(key)
+      ?? (legacyKey ? globalThis.localStorage?.getItem(legacyKey) : null);
+    return value === "true";
   } catch {
     return false;
   }
@@ -860,7 +872,10 @@ function writeBooleanPreference(key, value) {
 
 function readCollapsedFinancePanels() {
   try {
-    const value = JSON.parse(globalThis.localStorage?.getItem(FINANCE_PANELS_COLLAPSED_KEY) || "[]");
+    const stored = globalThis.localStorage?.getItem(FINANCE_PANELS_COLLAPSED_KEY)
+      || globalThis.localStorage?.getItem(LEGACY_FINANCE_PANELS_COLLAPSED_KEY)
+      || "[]";
+    const value = JSON.parse(stored);
     return new Set(Array.isArray(value) ? value : []);
   } catch {
     return new Set();
@@ -916,7 +931,7 @@ async function signIn(email, password) {
   const nextSession = await authRequest("/token?grant_type=password", { email, password });
   saveSession(nextSession);
   await bootAuthenticatedApp({ skipRefresh: true });
-  showToast("Вы вошли в систему.");
+  showToast("Вы вошли в Фондик.");
 }
 
 async function signUp(email, password) {
@@ -1369,7 +1384,7 @@ function renderFinanceMode() {
   const collapsed = collapsedFinancePanels.has("mode");
   const gaugeValue = Math.min(100, Math.max(0, Math.round(finance.requiredPercent)));
   const heroCopy = finance.mode === "Антикризисный"
-    ? "Система временно замораживает низкие приоритеты, чтобы защитить обязательные платежи."
+    ? "Фондик временно замораживает низкие приоритеты, чтобы защитить обязательные платежи."
     : finance.mode === "Стабилизация"
       ? "Держим фокус на обязательных платежах и аккуратно двигаем цели."
       : "Можно активнее пополнять резерв, цели и развитие.";
@@ -1598,7 +1613,7 @@ function heroSlidesFor({ finance, progress }) {
       illustration: finance.mode === "Антикризисный" ? "crisis-shield" : finance.mode === "Стабилизация" ? "balance-scale" : "growth-rocket",
       eyebrow: "Режим",
       title: finance.mode,
-      text: finance.mode === "Антикризисный" ? "Система защищает обязательные платежи и ставит низкие приоритеты на паузу." : "Режим помогает держать баланс между платежами и целями.",
+      text: finance.mode === "Антикризисный" ? "Фондик защищает обязательные платежи и ставит низкие приоритеты на паузу." : "Режим помогает держать баланс между платежами и целями.",
       meta: "Иллюстрация: щит, весы или рост в зависимости от режима",
       details: [
         `Долговая нагрузка: ${finance.requiredPercent}%`,
@@ -1999,17 +2014,38 @@ function currentMonthAllocationsForFund(fundId) {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+function currentMonthTopupsForFund(fund) {
+  const directTopups = state.history
+    .filter((item) => {
+      if (item.periodKey !== state.currentMonthKey || Number(item.amount || 0) <= 0) {
+        return false;
+      }
+      if (!["Пополнение", "Оплатил"].includes(item.type)) {
+        return false;
+      }
+      if (item.fundId) {
+        return item.fundId === fund.id;
+      }
+      return String(item.comment || "").includes(`«${fund.name}»`);
+    })
+    .map((item) => ({
+      fundId: fund.id,
+      fundName: fund.name,
+      amount: Number(item.amount || 0),
+      date: item.date
+    }));
+
+  return [
+    ...currentMonthAllocationsForFund(fund.id),
+    ...directTopups
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
 function lastTopUpFor(fund) {
-  return currentMonthAllocationsForFund(fund.id)[0]?.amount || 0;
+  return currentMonthTopupsForFund(fund)[0]?.amount || 0;
 }
 
 function fundIsComplete(fund) {
-  if (["spending", "required"].includes(fund.fundType)) {
-    return monthlyLimitOf(fund) > 0 && spentThisMonthOf(fund) <= monthlyLimitOf(fund);
-  }
-  if (isDebtFund(fund)) {
-    return debtCalculations(fund).debtBalance <= 0;
-  }
   return Number(fund.monthTarget || 0) > 0 && Number(fund.monthBalance || 0) >= Number(fund.monthTarget || 0);
 }
 
@@ -2042,7 +2078,7 @@ function renderFunds() {
 
 function renderFundCard(fund) {
   const fundType = normalizeFundType(fund.fundType || fund.type, fund);
-  const progress = ["spending", "required"].includes(fundType) ? Math.min(100, Math.max(0, spentPercentOf(fund))) : progressOf(fund);
+  const progress = monthProgressOf(fund);
   const complete = fundIsComplete(fund);
   const finance = calculateMonthlyFinance();
   const isSystemPaused = isFundSystemPaused(fund, finance);
@@ -2076,11 +2112,6 @@ function renderFundCard(fund) {
             <span>${escapeHtml(pauseReason)}</span>
           </div>
         ` : ""}
-        <div class="fund-transfer">
-          <span>Перевести</span>
-          <strong>${money(plannedTransferFor(fund))}</strong>
-          <small>${fund.percent}% от дохода</small>
-        </div>
         ${renderFundCardBody(fund, fundType, progress)}
         ${renderFundQuickActions(fund, fundType)}
       </article>
@@ -2088,99 +2119,33 @@ function renderFundCard(fund) {
 }
 
 function renderFundCardBody(fund, fundType, progress) {
-  if (fundType === "debt") {
-    const debt = debtCalculations(fund);
-    const weakPayment = debt.minPayment > 0 && debt.debtBalance > 0 && (debt.principalPayment <= 0 || debt.principalPayment < debt.minPayment * 0.3);
-    return `
-      <div class="fund-main-metric">
-        <span>Остаток долга</span>
-        <strong>${money(debt.debtBalance)}</strong>
-      </div>
-      <div class="fund-money debt-money">
-        <div class="metric-emphasis">
-          <span>Мин. платеж</span>
-          <strong>${money(debt.minPayment)}</strong>
-        </div>
-        <div class="metric-emphasis">
-          <span>Дата платежа</span>
-          <strong>${escapeHtml(fund.paymentDate || "-")}</strong>
-        </div>
-        <div>
-          <span>Ставка</span>
-          <strong>${debt.annualRate}%</strong>
-        </div>
-        <div>
-          <span>Проценты / тело</span>
-          <strong>${money(debt.monthlyInterest)} / ${money(Math.max(0, debt.principalPayment))}</strong>
-        </div>
-      </div>
-      ${debt.annualRate > 40 ? `<div class="limit-warning is-critical">Высокая ставка. Проверьте досрочное погашение или реструктуризацию.</div>` : ""}
-      ${weakPayment ? `<div class="limit-warning">Платеж почти не снижает долг</div>` : ""}
-      <div class="fund-footer strong-footer">
-        <span>${escapeHtml(debtForecastText(fund))}</span>
-      </div>
-    `;
-  }
-
-  if (fundType === "spending" || fundType === "required") {
-    const remaining = remainingLimitOf(fund);
-    const over = Math.abs(Math.min(0, remaining));
-    return `
-      <div class="fund-main-metric ${remaining < 0 ? "is-danger" : "is-ok"}">
-        <span>${remaining < 0 ? "Превышение" : "Осталось"}</span>
-        <strong>${money(Math.abs(remaining))}</strong>
-      </div>
-      <div class="fund-money spending-money">
-        <div>
-          <span>Лимит месяца</span>
-          <strong>${money(monthlyLimitOf(fund))}</strong>
-        </div>
-        <div>
-          <span>Потрачено</span>
-          <strong>${money(spentThisMonthOf(fund))}</strong>
-        </div>
-        <div>
-          <span>Израсходовано</span>
-          <strong>${spentPercentOf(fund)}%</strong>
-        </div>
-      </div>
-      ${remaining < 0 ? `<div class="limit-warning is-critical">Лимит превышен на ${money(over)}</div>` : ""}
-      <div class="progress-track">
-        <span class="progress-fill" style="--progress: ${Math.min(100, Math.max(0, progress))}%"></span>
-      </div>
-      <div class="fund-footer">
-        <span>${fund.percent}% распределения</span>
-        <span>${escapeHtml(fund.category)}</span>
-      </div>
-    `;
-  }
-
-  const remaining = remainingOf(fund);
+  const monthTarget = Number(fund.monthTarget || 0);
+  const monthBalance = Number(fund.monthBalance || 0);
+  const monthRemaining = Math.max(0, roundMoney(monthTarget - monthBalance));
+  const lastTopUp = lastTopUpFor(fund);
   return `
-    <div class="fund-main-metric">
-      <span>Собрано</span>
-      <strong>${money(fund.balance || 0)}</strong>
+    <div class="fund-month-metric">
+      <div>
+        <span>Пополнено за месяц</span>
+        <strong>${money(monthBalance)}</strong>
+      </div>
+      <b class="${lastTopUp > 0 ? "is-positive" : ""}">${lastTopUp > 0 ? `+${money(lastTopUp)}` : "+0 ₽"}</b>
     </div>
-    <div class="fund-money">
-      <div>
-        <span>Цель</span>
-        <strong>${money(fund.target || 0)}</strong>
-      </div>
-      <div>
-        <span>Осталось</span>
-        <strong>${money(remaining)}</strong>
-      </div>
-      <div>
-        <span>Прогресс</span>
+    <div class="fund-month-progress">
+      <div class="fund-month-progress-head">
+        <span>Цель месяца ${money(monthTarget)}</span>
         <strong>${progress}%</strong>
       </div>
+      <div class="progress-track">
+        <span class="progress-fill" style="--progress: ${progress}%; --fund-color: ${fund.color}"></span>
+      </div>
     </div>
-    <div class="progress-track">
-      <span class="progress-fill" style="--progress: ${progress}%"></span>
-    </div>
-    <div class="fund-footer">
-      <span>${forecastFor(fund)}</span>
-      <span>${fund.percent}%</span>
+    <div class="fund-month-footer">
+      <div>
+        <span>Осталось внести</span>
+        <strong>${money(monthRemaining)}</strong>
+      </div>
+      <span>${fund.percent}% распределения</span>
     </div>
   `;
 }
@@ -2666,6 +2631,8 @@ function applyFundAction(id, action) {
     type: historyType,
     amount,
     periodKey: state.currentMonthKey,
+    fundId: fund.id,
+    fundName: fund.name,
     comment
   });
   showToast(`${historyType}: ${money(amount)}.`);

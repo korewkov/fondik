@@ -3,7 +3,8 @@ const SUPABASE_CONFIG = {
   apiKey: "sb_publishable_n8uU9W5EP3CqMSBoeiXO6g_3DuxrpcN"
 };
 
-const SESSION_STORAGE_KEY = "money-system.supabase-session";
+const SESSION_STORAGE_KEY = "fondik.supabase-session";
+const LEGACY_SESSION_STORAGE_KEY = "money-system.supabase-session";
 const SUPABASE_PROXY_PATH = "/api/supabase";
 
 const demoFunds = [
@@ -231,6 +232,11 @@ function saveSession(nextSession) {
 
 function clearSession() {
   localStorage.removeItem(SESSION_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_SESSION_STORAGE_KEY);
+}
+
+function hasStoredSession() {
+  return Boolean(localStorage.getItem(SESSION_STORAGE_KEY) || localStorage.getItem(LEGACY_SESSION_STORAGE_KEY));
 }
 
 function redirectToApp() {
@@ -275,7 +281,7 @@ function translateAuthError(message) {
 }
 
 function openAuthModal() {
-  if (localStorage.getItem(SESSION_STORAGE_KEY)) {
+  if (hasStoredSession()) {
     redirectToApp();
     return;
   }
@@ -345,7 +351,7 @@ els.demoResult.addEventListener("input", (event) => {
   }
 });
 
-if (localStorage.getItem(SESSION_STORAGE_KEY)) {
+if (hasStoredSession()) {
   document.querySelectorAll("[data-auth-trigger]").forEach((button) => {
     button.textContent = "В кабинет";
   });

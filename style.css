@@ -160,6 +160,14 @@ input[type="file"] {
   line-height: 1.65;
 }
 
+.hero-slogan {
+  margin: -8px 0 12px;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2706,6 +2714,87 @@ h2 {
 
 .fund-main-metric.is-danger strong {
   color: #b42335;
+}
+
+.fund-month-metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  margin: 14px 0 12px;
+  padding: 12px;
+  border: 1px solid rgba(189, 221, 243, 0.88);
+  border-radius: var(--radius);
+  background: #f7fcff;
+}
+
+.fund-month-metric span,
+.fund-month-progress-head span,
+.fund-month-footer span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fund-month-metric strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--blue-dark);
+  font-size: 28px;
+  line-height: 1.04;
+  overflow-wrap: anywhere;
+}
+
+.fund-card-debt .fund-month-metric strong {
+  color: #172033;
+}
+
+.fund-month-metric b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  background: #eef4f9;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.fund-month-metric b.is-positive {
+  background: #e9fbef;
+  color: #167044;
+}
+
+.fund-month-progress {
+  display: grid;
+  gap: 7px;
+}
+
+.fund-month-progress-head,
+.fund-month-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fund-month-progress-head strong,
+.fund-month-footer strong {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.fund-month-footer {
+  margin-top: 10px;
+}
+
+.fund-month-footer div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .fund-money {
