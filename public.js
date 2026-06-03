@@ -21,7 +21,6 @@ const els = {
   authForm: document.querySelector("#authForm"),
   authEmail: document.querySelector("#authEmail"),
   authPassword: document.querySelector("#authPassword"),
-  authLogin: document.querySelector("#authLogin"),
   authMessage: document.querySelector("#authMessage"),
   loginBtn: document.querySelector("#loginBtn"),
   signupBtn: document.querySelector("#signupBtn"),
@@ -199,12 +198,10 @@ async function signIn(email, password) {
   redirectToApp();
 }
 
-async function signUp(email, password, login) {
-  const safeLogin = normalizeLogin(login) || normalizeLogin(email.split("@")[0]);
+async function signUp(email, password) {
   const result = await authRequest("/signup", {
     email,
-    password,
-    data: { login: safeLogin }
+    password
   });
   if (result?.access_token) {
     saveSession(result);
@@ -247,9 +244,6 @@ els.authTriggerButtons.forEach((button) => {
 els.publicLogoutBtn.addEventListener("click", () => {
   clearSession();
   els.publicLogoutBtn.classList.add("is-hidden");
-  els.authTriggerButtons.forEach((button) => {
-    button.textContent = button.classList.contains("primary-btn") ? "Войти" : button.textContent;
-  });
   document.querySelector(".public-header [data-auth-trigger]").textContent = "Войти";
   document.querySelector(".hero-actions [data-auth-trigger]").textContent = "Начать с аккаунтом";
   els.authMessage.textContent = "Сессия сброшена. Можно войти заново.";
@@ -272,7 +266,7 @@ els.authForm.addEventListener("submit", async (event) => {
   try {
     const action = event.submitter?.value || "login";
     if (action === "signup") {
-      await signUp(els.authEmail.value.trim(), els.authPassword.value, els.authLogin.value);
+      await signUp(els.authEmail.value.trim(), els.authPassword.value);
     } else {
       await signIn(els.authEmail.value.trim(), els.authPassword.value);
     }

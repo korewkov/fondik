@@ -132,7 +132,6 @@ const els = {
   authForm: document.querySelector("#authForm"),
   authEmail: document.querySelector("#authEmail"),
   authPassword: document.querySelector("#authPassword"),
-  authLogin: document.querySelector("#authLogin"),
   authMessage: document.querySelector("#authMessage"),
   loginBtn: document.querySelector("#loginBtn"),
   signupBtn: document.querySelector("#signupBtn"),
@@ -742,19 +741,14 @@ async function signIn(email, password) {
   showToast("Вы вошли в систему.");
 }
 
-async function signUp(email, password, login = "") {
-  const safeLogin = normalizeLogin(login) || normalizeLogin(email.split("@")[0]);
+async function signUp(email, password) {
   const result = await authRequest("/signup", {
     email,
-    password,
-    data: {
-      login: safeLogin
-    }
+    password
   });
   if (result?.access_token) {
     saveSession(result);
     await bootAuthenticatedApp({ skipRefresh: true });
-    updateProfileLogin(safeLogin, { silent: true });
     showToast("Аккаунт создан.");
     return;
   }
@@ -2486,7 +2480,6 @@ els.authForm.addEventListener("submit", async (event) => {
   els.authMessage.textContent = "";
   const email = els.authEmail.value.trim();
   const password = els.authPassword.value;
-  const login = els.authLogin.value.trim();
   const action = event.submitter?.value || "login";
 
   els.loginBtn.disabled = true;
@@ -2494,7 +2487,7 @@ els.authForm.addEventListener("submit", async (event) => {
 
   try {
     if (action === "signup") {
-      await signUp(email, password, login);
+      await signUp(email, password);
     } else {
       await signIn(email, password);
     }
