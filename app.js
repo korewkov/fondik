@@ -4430,6 +4430,7 @@ state = await withTimeout(loadState({ skipRefresh: refreshedBeforeLoad || option
      console.log("isStorageReady:", isStorageReady);
     console.log("state.briefing:", state.briefing);
     console.log("history length:", state.history.length);
+        console.log("history items:", JSON.stringify(state.history));
     console.log("shouldOfferQuickStart:", shouldOfferQuickStart());
     if (shouldOfferQuickStart()) {
       hasAutoOfferedBriefing = true;
