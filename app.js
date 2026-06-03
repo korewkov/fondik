@@ -2650,31 +2650,104 @@ function applyFundAction(id, action) {
     return;
   }
 
-  const amount = roundMoney(prompt(`Сумма для операции «${actionLabel(action)}» по фонду «${fund.name}»`, ""));
-  if (amount <= 0) {
-    return;
-  }
+   openInlineAction(id, action);
+  return;
+
+}
+function openInlineAction(id, action) {
+  // Закрываем любую уже открытую форму
+  document.querySelectorAll(".fund-inline-action").forEach((el) => el.remove());
+
+  const fund = state.funds.find((item) => item.id === id);
+  if (!fund) return;
+
+  const card = document.querySelector(`[data-fund-card="${id}"]`);
+  if (!card) return;
+
+  const label = actionLabel(action);
+  const hint = action === "topup"
+    ? "Сколько пополнить?"
+    : action === "spend"
+      ? "Сколько списать?"
+      : "Сколько оплатил?";
+
+  const form = document.createElement("div");
+  form.className = "fund-inline-action";
+  form.innerHTML = `
+    <label>${hint}</label>
+    <div class="fund-inline-action-row">
+      <input
+        class="fund-inline-amount"
+        type="number"
+        min="1"
+        step="0.01"
+        placeholder="Введи сумму"
+        autofocus
+      >
+      <button class="confirm-btn" type="button">${label}</button>
+      <button class="cancel-btn" type="button">Отмена</button>
+    </div>
+  `;
+
+  card.appendChild(form);
+
+  const input = form.querySelector(".fund-inline-amount");
+  input.focus();
+
+  form.querySelector(".cancel-btn").addEventListener("click", () => {
+    form.remove();
+  });
+
+  form.querySelector(".confirm-btn").addEventListener("click", () => {
+    const amount = roundMoney(input.value);
+    if (amount <= 0) {
+      input.focus();
+      return;
+    }
+    form.remove();
+    applyFundActionConfirmed(id, action, amount);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const amount = roundMoney(input.value);
+      if (amount <= 0) return;
+      form.remove();
+      applyFundActionConfirmed(id, action, amount);
+    }
+    if (e.key === "Escape") {
+      form.remove();
+    }
+  });
+}
+
+function applyFundActionConfirmed(id, action, amount) {
+  if (!canChangeData()) return;
+
+  const fund = state.funds.find((item) => item.id === id);
+  if (!fund) return;
 
   const fundType = normalizeFundType(fund.fundType || fund.type, fund);
   let historyType = actionLabel(action);
   let comment = `${historyType}: «${fund.name}»`;
+
   if (action === "topup") {
-    fund.balance = roundMoney(Number(fund.balance || 0) + amount);
-    fund.monthBalance = roundMoney(Number(fund.monthBalance || 0) + amount);
+    fund.balance = roundMoney(fund.balance + amount);
+    fund.monthBalance = roundMoney((fund.monthBalance || 0) + amount);
   } else if (action === "spend") {
     fund.spentThisMonth = roundMoney(spentThisMonthOf(fund) + amount);
     if (fundType !== "spending" && fundType !== "required") {
-      fund.balance = Math.max(0, roundMoney(Number(fund.balance || 0) - amount));
+      fund.balance = Math.max(0, roundMoney(fund.balance - amount));
     }
   } else if (action === "paid") {
     if (fundType === "debt") {
       fund.debtBalance = Math.max(0, roundMoney(debtCalculations(fund).debtBalance - amount));
-      fund.monthBalance = roundMoney(Number(fund.monthBalance || 0) + amount);
-      fund.balance = roundMoney(Number(fund.balance || 0) + amount);
+      fund.monthBalance = roundMoney((fund.monthBalance || 0) + amount);
+      fund.balance = roundMoney(fund.balance + amount);
       comment = `Оплачен долг «${fund.name}»`;
     } else {
       fund.spentThisMonth = roundMoney(spentThisMonthOf(fund) + amount);
-      fund.monthBalance = roundMoney(Number(fund.monthBalance || 0) + amount);
+      fund.monthBalance = roundMoney((fund.monthBalance || 0) + amount);
     }
   }
 
@@ -2688,10 +2761,10 @@ function applyFundAction(id, action) {
     fundName: fund.name,
     comment
   });
+
   showToast(`${historyType}: ${money(amount)}.`);
   render();
 }
-
 function actionLabel(action) {
   return {
     topup: "Пополнение",
