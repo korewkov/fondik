@@ -4423,10 +4423,14 @@ async function bootAuthenticatedApp(options = {}) {
     if (refreshedBeforeLoad) {
       await withTimeout(refreshSessionIfNeeded(), 8000, "Восстановление сессии");
     }
-    state = await withTimeout(loadState({ skipRefresh: refreshedBeforeLoad || options.skipRefresh }), 12000, "Загрузка кабинета");
+state = await withTimeout(loadState({ skipRefresh: refreshedBeforeLoad || options.skipRefresh }), 12000, "Загрузка кабинета");
     renderAuthState();
     render();
     applyRoute();
+    if (shouldOfferQuickStart()) {
+      hasAutoOfferedBriefing = true;
+      window.setTimeout(() => openQuickStart(), 600);
+    }
   } catch (error) {
     if (!session?.user?.id) {
       storageStatus = "Сессия устарела. Войдите заново.";
