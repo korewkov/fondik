@@ -103,13 +103,13 @@ const defaultFunds = [
   }
 ];
 
+let session = null;
 let state = createDefaultState();
 let demoFunds = defaultFunds.map((fund) => ({ ...fund }));
 let storageStatus = "Подключение к Supabase еще не настроено.";
 let isStorageReady = false;
 let isBooted = false;
 let saveTimer;
-let session = null;
 let pendingResetAction = null;
 let briefingStep = 0;
 let hasAutoOfferedBriefing = false;
