@@ -9,7 +9,7 @@
   <title>Фондик — личный кабинет</title>
   <link rel="icon" type="image/svg+xml" href="assets/fondik-mark.svg">
   <link rel="apple-touch-icon" href="assets/fondik-apple-touch.png">
-  <link rel="stylesheet" href="style.css?v=20260604-4">
+  <link rel="stylesheet" href="style.css?v=20260604-5">
   <script>
     window.__moneyAppShowBootError = (error) => {
       const message = error?.message || String(error || "неизвестная ошибка");
@@ -72,15 +72,11 @@
   <div class="app-shell is-hidden" id="appShell">
     <main class="main">
       <header class="topbar">
-        <div class="topbar-brand">
+        <a class="topbar-brand" href="/" aria-label="Открыть главную страницу Фондика">
           <div class="brand">
             <img class="brand-lockup dashboard-brand-logo" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
           </div>
-          <div>
-            <p class="eyebrow">Фондик — деньги сразу попадают на свои места.</p>
-            <h1 id="screenTitle">Мои фонды</h1>
-          </div>
-        </div>
+        </a>
 
         <nav class="nav top-nav" aria-label="Основная навигация">
           <button class="nav-btn is-active" data-screen="dashboard" data-route="/dashboard">Дашборд</button>
@@ -489,6 +485,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260604-4" defer></script>
+  <script src="app.js?v=20260604-5" defer></script>
 </body>
 </html>

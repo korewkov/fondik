@@ -1626,7 +1626,6 @@ function renderHeroSlider(context) {
             <span>${escapeHtml(slide.eyebrow)}</span>
             <strong>${escapeHtml(slide.title)}</strong>
             <p>${escapeHtml(slide.text)}</p>
-            <small>${escapeHtml(slide.meta)}</small>
           </div>
           <button class="ghost-btn compact hero-flip-btn" type="button" data-hero-flip>Подробнее</button>
         </div>
@@ -3578,7 +3577,9 @@ function switchScreen(screen, options = {}) {
     dashboard: "Дашборд",
     history: "История операций"
   };
-  els.screenTitle.textContent = titles[nextScreen];
+  if (els.screenTitle) {
+    els.screenTitle.textContent = titles[nextScreen];
+  }
 
   if (options.skipHistory !== true) {
     if (window.location.pathname !== nextPath) {
