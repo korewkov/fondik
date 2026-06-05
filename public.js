@@ -27,7 +27,10 @@ const els = {
   authMessage: document.querySelector("#authMessage"),
   loginBtn: document.querySelector("#loginBtn"),
   signupBtn: document.querySelector("#signupBtn"),
+  publicHeader: document.querySelector(".public-header"),
+  publicMenuToggle: document.querySelector("#publicMenuToggle"),
   publicLogoutBtn: document.querySelector("#publicLogoutBtn"),
+  publicMobileLogoutBtn: document.querySelector("#publicMobileLogoutBtn"),
   demoForm: document.querySelector("#demoForm"),
   demoAmount: document.querySelector("#demoAmount"),
   demoResult: document.querySelector("#demoResult")
@@ -252,6 +255,17 @@ function navigate(path, options = {}) {
   applyPublicRoute();
 }
 
+function closePublicMenu() {
+  els.publicHeader?.classList.remove("is-menu-open");
+  els.publicMenuToggle?.setAttribute("aria-expanded", "false");
+}
+
+function togglePublicMenu() {
+  const isOpen = !els.publicHeader?.classList.contains("is-menu-open");
+  els.publicHeader?.classList.toggle("is-menu-open", isOpen);
+  els.publicMenuToggle?.setAttribute("aria-expanded", String(isOpen));
+}
+
 async function signIn(email, password) {
   const session = await authRequest("/token?grant_type=password", { email, password });
   saveSession(session);
@@ -304,6 +318,7 @@ function openAuthModal() {
 els.authTriggerButtons.forEach((button) => {
   button.addEventListener("click", (event) => {
     event.preventDefault();
+    closePublicMenu();
     navigate(button.getAttribute("href") || "/login");
   });
 });
@@ -311,10 +326,18 @@ els.authTriggerButtons.forEach((button) => {
 els.publicLogoutBtn.addEventListener("click", () => {
   clearSession();
   els.publicLogoutBtn.classList.add("is-hidden");
-  document.querySelector(".public-header [data-auth-trigger]").textContent = "Войти";
+  els.publicMobileLogoutBtn?.classList.add("is-hidden");
+  document.querySelectorAll(".public-header [data-auth-trigger]").forEach((button) => {
+    button.textContent = "Войти";
+  });
   document.querySelector(".hero-actions [data-auth-trigger]").textContent = "Начать с аккаунтом";
   els.authMessage.textContent = "Сессия сброшена. Можно войти заново.";
+  closePublicMenu();
   openAuthModal();
+});
+
+els.publicMobileLogoutBtn?.addEventListener("click", () => {
+  els.publicLogoutBtn.click();
 });
 
 els.authCloseBtn.addEventListener("click", () => els.authModal.close());
@@ -370,8 +393,33 @@ document.querySelectorAll("[data-public-route]").forEach((link) => {
       return;
     }
     event.preventDefault();
+    closePublicMenu();
     navigate(href);
   });
+});
+
+els.publicMenuToggle?.addEventListener("click", togglePublicMenu);
+
+els.publicHeader?.addEventListener("click", (event) => {
+  const anchor = event.target.closest(".public-mobile-menu a[href^='#']");
+  if (anchor) {
+    closePublicMenu();
+  }
+});
+
+document.addEventListener("click", (event) => {
+  if (!els.publicHeader?.classList.contains("is-menu-open")) {
+    return;
+  }
+  if (!els.publicHeader.contains(event.target)) {
+    closePublicMenu();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closePublicMenu();
+  }
 });
 
 function applyPublicRoute() {
@@ -392,6 +440,7 @@ if (hasStoredSession()) {
     button.textContent = "В кабинет";
   });
   els.publicLogoutBtn.classList.remove("is-hidden");
+  els.publicMobileLogoutBtn?.classList.remove("is-hidden");
 }
 
 renderDemo();
