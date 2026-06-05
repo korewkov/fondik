@@ -263,6 +263,7 @@ input[type="file"] {
     linear-gradient(135deg, #ffffff 0%, #eef8ff 56%, #f7fdff 100%);
   box-shadow: 0 28px 70px rgba(47, 125, 225, 0.1);
   z-index: -1;
+  animation: heroAmbientGlow 9s ease-in-out infinite;
 }
 
 .landing-hero-copy {
@@ -360,6 +361,23 @@ input[type="file"] {
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 253, 255, 0.86)),
     radial-gradient(circle at 70% 26%, rgba(255, 230, 122, 0.22), transparent 32%);
   box-shadow: 18px 18px 0 rgba(207, 239, 255, 0.62), 0 26px 54px rgba(39, 87, 124, 0.13);
+  animation: visualBreath 6.8s ease-in-out infinite;
+}
+
+.landing-visual::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 76px 18px 34px 58px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 20% 34%, rgba(255, 230, 122, 0.5) 0 4px, transparent 5px),
+    radial-gradient(circle at 82% 40%, rgba(85, 214, 190, 0.5) 0 3px, transparent 4px),
+    radial-gradient(circle at 72% 70%, rgba(236, 72, 153, 0.34) 0 3px, transparent 4px),
+    radial-gradient(circle at 36% 78%, rgba(59, 130, 246, 0.28) 0 4px, transparent 5px);
+  opacity: 0.72;
+  pointer-events: none;
+  animation: sparkleField 7.2s ease-in-out infinite;
 }
 
 .landing-mascot {
@@ -384,7 +402,25 @@ input[type="file"] {
   border-radius: 20px;
   background: var(--yellow);
   box-shadow: 8px 8px 0 rgba(24, 50, 79, 0.12);
-  animation: incomeDrop 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  overflow: hidden;
+  animation:
+    incomeDrop 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    incomePulse 4s ease-in-out 900ms infinite;
+}
+
+.income-card::after {
+  content: "";
+  position: absolute;
+  inset: -40% auto -40% -70%;
+  width: 54%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transform: rotate(16deg);
+  animation: incomeShine 4.8s ease-in-out 1.4s infinite;
+}
+
+.income-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .income-card span {
@@ -422,8 +458,28 @@ input[type="file"] {
   box-shadow: 0 12px 28px rgba(39, 87, 124, 0.09);
   opacity: 0;
   transform: translateY(18px);
-  animation: fundRise 620ms ease forwards;
-  animation-delay: var(--item-delay);
+  overflow: hidden;
+  animation:
+    fundRise 620ms ease forwards,
+    fundCardGlow 5.6s ease-in-out infinite;
+  animation-delay: var(--item-delay), calc(var(--item-delay) + 1.2s);
+}
+
+.fund-flow-card::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 0 42%, rgba(255, 255, 255, 0.64) 50%, transparent 58% 100%);
+  transform: translateX(-120%);
+  animation: fundCardShimmer 5.4s ease-in-out infinite;
+  animation-delay: calc(var(--item-delay) + 1.6s);
+  pointer-events: none;
+}
+
+.fund-flow-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .fund-flow-card span {
@@ -453,8 +509,10 @@ input[type="file"] {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--fund-color), rgba(255, 255, 255, 0.4));
   transform-origin: left center;
-  animation: fillFundBar 980ms ease both;
-  animation-delay: calc(var(--item-delay) + 0.22s);
+  animation:
+    fillFundBar 980ms ease both,
+    fundBarGlow 3.8s ease-in-out infinite;
+  animation-delay: calc(var(--item-delay) + 0.22s), calc(var(--item-delay) + 1.4s);
 }
 
 .flow-lines {
@@ -473,6 +531,8 @@ input[type="file"] {
   border-radius: 999px;
   background: linear-gradient(90deg, rgba(31, 143, 255, 0), rgba(31, 143, 255, 0.38), rgba(20, 184, 166, 0));
   opacity: 0.52;
+  animation: linePulse 3.8s ease-in-out infinite;
+  animation-delay: var(--line-delay);
 }
 
 .flow-lines span::after {
@@ -558,10 +618,94 @@ input[type="file"] {
   }
 }
 
+@keyframes heroAmbientGlow {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    filter: saturate(1.12) brightness(1.02);
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+@keyframes visualBreath {
+  0%,
+  100% {
+    box-shadow: 18px 18px 0 rgba(207, 239, 255, 0.62), 0 26px 54px rgba(39, 87, 124, 0.13);
+  }
+  50% {
+    box-shadow: 22px 22px 0 rgba(207, 239, 255, 0.78), 0 34px 64px rgba(39, 87, 124, 0.18);
+  }
+}
+
+@keyframes sparkleField {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    opacity: 0.92;
+    transform: translate3d(8px, -8px, 0) scale(1.02);
+  }
+}
+
+@keyframes incomePulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 8px 8px 0 rgba(24, 50, 79, 0.12);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.012);
+    box-shadow: 10px 12px 0 rgba(24, 50, 79, 0.14), 0 0 26px rgba(255, 230, 122, 0.42);
+  }
+}
+
+@keyframes incomeShine {
+  0%,
+  56% {
+    transform: translateX(0) rotate(16deg);
+  }
+  78%,
+  100% {
+    transform: translateX(360%) rotate(16deg);
+  }
+}
+
 @keyframes fundRise {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes fundCardGlow {
+  0%,
+  100% {
+    box-shadow: 0 12px 28px rgba(39, 87, 124, 0.09);
+    border-top-color: #dbe9fb;
+    border-right-color: #dbe9fb;
+    border-bottom-color: #dbe9fb;
+  }
+  50% {
+    box-shadow: 0 16px 34px rgba(39, 87, 124, 0.14), 0 0 18px color-mix(in srgb, var(--fund-color) 18%, transparent);
+    border-top-color: color-mix(in srgb, var(--fund-color) 28%, #dbe9fb);
+    border-right-color: color-mix(in srgb, var(--fund-color) 28%, #dbe9fb);
+    border-bottom-color: color-mix(in srgb, var(--fund-color) 28%, #dbe9fb);
+  }
+}
+
+@keyframes fundCardShimmer {
+  0%,
+  58% {
+    transform: translateX(-120%);
+  }
+  82%,
+  100% {
+    transform: translateX(120%);
   }
 }
 
@@ -574,6 +718,16 @@ input[type="file"] {
   }
 }
 
+@keyframes fundBarGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.18);
+  }
+}
+
 @keyframes mascotFloat {
   0%,
   100% {
@@ -581,6 +735,18 @@ input[type="file"] {
   }
   50% {
     transform: translateY(-10px) rotate(1deg);
+  }
+}
+
+@keyframes linePulse {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scaleX(0.92);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scaleX(1);
   }
 }
 
