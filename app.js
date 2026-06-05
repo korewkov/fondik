@@ -3633,6 +3633,16 @@ els.navButtons.forEach((button) => {
 
 window.addEventListener("popstate", applyRoute);
 
+document.addEventListener("wheel", (event) => {
+  if (
+    event.target instanceof HTMLInputElement
+    && event.target.type === "number"
+    && document.activeElement === event.target
+  ) {
+    event.preventDefault();
+  }
+}, { passive: false });
+
 function openAuthModal() {
   if (session?.user?.id) {
     renderAuthState();

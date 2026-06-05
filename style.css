@@ -1362,6 +1362,7 @@ h2 {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   overflow: hidden;
+  height: min(760px, calc(100vh - 28px));
   max-height: min(760px, calc(100vh - 28px));
   padding: 0;
   background: var(--paper);
@@ -1371,7 +1372,7 @@ h2 {
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 22px;
-  min-height: 620px;
+  min-height: 0;
   padding: 22px;
   border-right: 2px solid var(--line);
   background: var(--paper-soft);
@@ -1443,7 +1444,7 @@ h2 {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   min-width: 0;
-  min-height: 620px;
+  min-height: 0;
   padding: 22px;
 }
 
@@ -1457,6 +1458,7 @@ h2 {
 }
 
 .onboarding-body {
+  display: grid;
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
@@ -1469,6 +1471,12 @@ h2 {
 
 .onboarding-step.is-active {
   display: grid;
+  min-height: 0;
+}
+
+.onboarding-step[data-onboarding-step="3"].is-active {
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
 }
 
 .onboarding-copy {
@@ -1633,6 +1641,10 @@ h2 {
 .onboarding-preview-list {
   display: grid;
   gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
 }
 
 .onboarding-fund-card {
@@ -3780,6 +3792,7 @@ body {
   }
 
   .onboarding-card {
+    height: min(760px, calc(100vh - 28px));
     max-height: min(760px, calc(100vh - 28px));
   }
 
@@ -3788,7 +3801,7 @@ body {
   }
 
   .onboarding-content {
-    min-height: min(620px, calc(100vh - 28px));
+    min-height: 0;
   }
 
   .onboarding-debt-row,
