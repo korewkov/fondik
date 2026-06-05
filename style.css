@@ -124,7 +124,7 @@ input[type="file"] {
 
 .public-menu-toggle,
 .public-mobile-menu {
-  display: none;
+  display: none !important;
 }
 
 .public-nav a {
@@ -4207,7 +4207,7 @@ body {
   }
 
   .public-menu-toggle {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
     min-width: 92px;
@@ -4215,7 +4215,7 @@ body {
 
   .public-mobile-menu {
     grid-column: 1 / -1;
-    display: none;
+    display: none !important;
     grid-template-columns: 1fr;
     gap: 10px;
     padding: 12px;
@@ -4226,7 +4226,7 @@ body {
   }
 
   .public-header.is-menu-open .public-mobile-menu {
-    display: grid;
+    display: grid !important;
   }
 
   .public-mobile-menu a,
