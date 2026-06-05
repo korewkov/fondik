@@ -9,7 +9,7 @@
   <title>Фондик — личный кабинет</title>
   <link rel="icon" type="image/svg+xml" href="assets/fondik-mark.svg">
   <link rel="apple-touch-icon" href="assets/fondik-apple-touch.png">
-  <link rel="stylesheet" href="style.css?v=20260604-2">
+  <link rel="stylesheet" href="style.css?v=20260604-3">
   <script>
     window.__moneyAppShowBootError = (error) => {
       const message = error?.message || String(error || "неизвестная ошибка");
@@ -401,244 +401,87 @@
       </div>
     </form>
   </dialog>
-<dialog class="auth-modal" id="quickStartModal">
-  <div class="auth-card quick-start-card">
-    <div class="auth-brand">
-      <img class="auth-brand-logo" src="assets/fondik-lockup-slogan.svg" alt="Фондик">
-    </div>
-    <p class="eyebrow">Быстрый старт</p>
-    <h2 class="quick-start-title">Три вопроса — и система всё настроит</h2>
+  <dialog class="fund-modal onboarding-modal" id="onboardingModal">
+    <form method="dialog" class="modal-card onboarding-card" id="onboardingForm">
+      <aside class="onboarding-side">
+        <img class="onboarding-logo" src="assets/fondik-lockup-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
+        <nav class="onboarding-steps" id="onboardingSteps" aria-label="Шаги онбординга"></nav>
+        <p>Можно пропустить и настроить позже</p>
+      </aside>
 
-    <div class="quick-start-steps">
-      <div class="quick-start-step is-active" data-qs-step="0">
-        <p class="quick-start-hint">Сколько примерно зарабатываешь в месяц?</p>
-        <input id="qsIncome" type="number" min="0" step="1" placeholder="Например, 65000">
-      </div>
-
-      <div class="quick-start-step" data-qs-step="1">
-        <p class="quick-start-hint">Сколько уходит на долги и обязательные платежи в месяц?</p>
-        <input id="qsObligations" type="number" min="0" step="1" placeholder="Например, 25000">
-      </div>
-
-      <div class="quick-start-step" data-qs-step="2">
-        <p class="quick-start-hint">Есть ли прямо сейчас просроченные долги?</p>
-        <div class="qs-choice-row">
-          <button class="qs-choice-btn" data-qs-choice="true" type="button">Да, есть</button>
-          <button class="qs-choice-btn" data-qs-choice="false" type="button">Нет</button>
-        </div>
-      </div>
-
-      <div class="quick-start-step" data-qs-step="3">
-        <div class="qs-result" id="qsResult"></div>
-      </div>
-    </div>
-
-    <div class="quick-start-actions">
-      <button class="ghost-btn compact" id="qsSkipBtn" type="button">Пропустить</button>
-      <button class="primary-btn compact" id="qsNextBtn" type="button">Дальше →</button>
-      <button class="primary-btn compact is-hidden" id="qsApplyBtn" type="button">Настроить фонды</button>
-    </div>
-
-    <div class="qs-dots">
-      <span class="is-active"></span>
-      <span></span>
-      <span></span>
-    </div>
-  </div>
-</dialog>
-  <dialog class="fund-modal briefing-modal" id="briefingModal">
-    <form method="dialog" class="modal-card briefing-card" id="briefingForm">
-      <div class="briefing-layout">
-        <aside class="briefing-visual" aria-label="Что сделает брифинг">
-          <img src="assets/briefing-illustration.png" alt="">
-          <div class="briefing-visual-copy">
+      <div class="onboarding-content">
+        <div class="modal-head onboarding-head">
+          <div>
             <p class="eyebrow">Стартовая настройка</p>
-            <h2>Соберем фонды под вашу реальную жизнь</h2>
-            <p>Ответьте на несколько вопросов, а система предложит проценты, приоритеты и цели фондов.</p>
+            <h2 id="onboardingTitle">Доход</h2>
           </div>
-          <div class="briefing-benefits">
-            <span>Фонды</span>
-            <span>Проценты</span>
-            <span>Приоритеты</span>
-          </div>
-        </aside>
+          <button class="icon-btn" value="skip" type="submit" aria-label="Закрыть">×</button>
+        </div>
 
-        <div class="briefing-content">
-          <div class="modal-head briefing-head">
-            <div>
-              <p class="eyebrow">Персональная настройка</p>
-              <h2 id="briefingStepTitle">Доход</h2>
-            </div>
-            <button class="icon-btn briefing-close" value="cancel" type="submit" aria-label="Закрыть">×</button>
-          </div>
-
-          <div class="briefing-progress" aria-label="Прогресс брифинга">
-            <div class="briefing-progress-head">
-              <span id="briefingStepLabel">Шаг 1 из 6</span>
-              <strong id="briefingStepHint">Понимаем ритм дохода</strong>
-            </div>
-            <div class="meter"><span id="briefingMeter" style="--progress: 16.6%"></span></div>
-          </div>
-
-          <div class="briefing-step is-active" data-briefing-step="0">
-            <div class="briefing-step-card">
-              <div class="briefing-step-intro">
-                <span>01</span>
-                <div>
-                  <h3>Сколько денег приходит в месяц</h3>
-                  <p>Это основа для расчета режима и будущих процентов.</p>
-                </div>
-              </div>
-              <label>Средний ежемесячный доход
-                <input id="briefMonthlyIncome" type="number" min="0" step="1" placeholder="Например, 65000">
-              </label>
-              <div class="briefing-grid">
-                <label>Тип дохода
-                  <select id="briefIncomeType">
-                    <option value="stable">Стабильный</option>
-                    <option value="partly_unstable">Частично нестабильный</option>
-                    <option value="unstable">Нестабильный</option>
-                  </select>
-                </label>
-                <label>Сколько раз в месяц приходят деньги
-                  <select id="briefIncomeFrequency">
-                    <option value="1">1 раз</option>
-                    <option value="2">2 раза</option>
-                    <option value="3-4">3-4 раза</option>
-                    <option value="4+">Больше 4 раз</option>
-                    <option value="unstable">Нестабильно</option>
-                  </select>
-                </label>
+        <div class="onboarding-body">
+          <section class="onboarding-step is-active" data-onboarding-step="0">
+            <div class="onboarding-copy">
+              <span>01</span>
+              <div>
+                <h3>Сколько денег приходит в месяц</h3>
+                <p>Если доход нестабильный — укажи минимальную сумму</p>
               </div>
             </div>
-          </div>
+            <label class="onboarding-field">Ежемесячный доход
+              <input id="obIncome" type="number" min="0" step="1" placeholder="Например, 75000">
+            </label>
+          </section>
 
-          <div class="briefing-step" data-briefing-step="1">
-            <div class="briefing-step-card">
-              <div class="briefing-step-head">
-                <div class="briefing-step-intro">
-                  <span>02</span>
-                  <div>
-                    <h3>Обязательные платежи</h3>
-                    <p>Кредиты, аренда, связь, транспорт до работы, лекарства и другие платежи, которые нельзя пропустить.</p>
-                  </div>
-                </div>
-                <button class="ghost-btn compact" id="addRequiredPaymentBtn" type="button">Добавить</button>
-              </div>
-              <div class="briefing-items" id="requiredPaymentList"></div>
-            </div>
-          </div>
-
-          <div class="briefing-step" data-briefing-step="2">
-            <div class="briefing-step-card">
-              <div class="briefing-step-head">
-                <div class="briefing-step-intro">
-                  <span>03</span>
-                  <div>
-                    <h3>Долги</h3>
-                    <p>Добавьте остаток, платеж и просрочки. Опасные долги Фондик выделит отдельно.</p>
-                  </div>
-                </div>
-                <button class="ghost-btn compact" id="addDebtBtn" type="button">Добавить</button>
-              </div>
-              <div class="briefing-items" id="debtList"></div>
-            </div>
-          </div>
-
-          <div class="briefing-step" data-briefing-step="3">
-            <div class="briefing-step-card">
-              <div class="briefing-step-intro">
-                <span>04</span>
-                <div>
-                  <h3>Базовая жизнь</h3>
-                  <p>Минимум, который нужен, чтобы нормально жить и работать.</p>
-                </div>
-              </div>
-              <div class="briefing-grid">
-                <label>Продукты<input data-life-expense="food" type="number" min="0" step="1"></label>
-                <label>Транспорт<input data-life-expense="transport" type="number" min="0" step="1"></label>
-                <label>Связь / интернет<input data-life-expense="phoneInternet" type="number" min="0" step="1"></label>
-                <label>Лекарства / здоровье<input data-life-expense="health" type="number" min="0" step="1"></label>
-                <label>Обязательные подписки<input data-life-expense="subscriptions" type="number" min="0" step="1"></label>
-                <label>Бытовые мелочи<input data-life-expense="household" type="number" min="0" step="1"></label>
+          <section class="onboarding-step" data-onboarding-step="1">
+            <div class="onboarding-copy">
+              <span>02</span>
+              <div>
+                <h3>Есть ли долги</h3>
+                <p>Добавь платежи, которые нельзя пропускать.</p>
               </div>
             </div>
-          </div>
-
-          <div class="briefing-step" data-briefing-step="4">
-            <div class="briefing-step-card">
-              <div class="briefing-step-head">
-                <div class="briefing-step-intro">
-                  <span>05</span>
-                  <div>
-                    <h3>Комфорт и резерв</h3>
-                    <p>Комфортные траты лучше сделать отдельными фондами, а резерв держать видимым.</p>
-                  </div>
-                </div>
-                <button class="ghost-btn compact" id="addComfortBtn" type="button">Добавить комфорт</button>
-              </div>
-              <div class="briefing-grid">
-                <label>Текущая подушка
-                  <select id="briefCurrentReserve">
-                    <option value="0">Нет</option>
-                    <option value="5000">До 5 000 ₽</option>
-                    <option value="20000">5 000-20 000 ₽</option>
-                    <option value="50000">20 000-50 000 ₽</option>
-                    <option value="80000">Больше 50 000 ₽</option>
-                  </select>
-                </label>
-                <label>Первая цель резерва
-                  <select id="briefReserveGoal">
-                    <option value="5000">5 000 ₽</option>
-                    <option value="10000">10 000 ₽</option>
-                    <option value="30000">30 000 ₽</option>
-                    <option value="50000">50 000 ₽</option>
-                  </select>
-                </label>
-              </div>
-              <div class="briefing-items" id="comfortList"></div>
+            <div class="onboarding-choice-row" role="group" aria-label="Есть ли долги">
+              <button class="onboarding-choice is-selected" type="button" data-ob-debt-choice="yes">Да, есть</button>
+              <button class="onboarding-choice" type="button" data-ob-debt-choice="no">Нет</button>
             </div>
-          </div>
-
-          <div class="briefing-step" data-briefing-step="5">
-            <div class="briefing-step-card">
-              <div class="briefing-step-head">
-                <div class="briefing-step-intro">
-                  <span>06</span>
-                  <div>
-                    <h3>Цели и развитие</h3>
-                    <p>Покупки, ремонт, обучение, бизнес и проекты. В антикризисном режиме часть целей временно уйдет на паузу.</p>
-                  </div>
-                </div>
-                <button class="ghost-btn compact" id="addGoalBtn" type="button">Добавить цель</button>
-              </div>
-              <div class="briefing-grid">
-                <label>Бизнес, фриланс или проект
-                  <select id="briefHasBusiness">
-                    <option value="no">Нет</option>
-                    <option value="yes">Да</option>
-                    <option value="planned">Планирую</option>
-                  </select>
-                </label>
-                <label>Нужны регулярные вложения
-                  <select id="briefBusinessNeedsInvestment">
-                    <option value="unknown">Пока не знаю</option>
-                    <option value="yes">Да</option>
-                    <option value="no">Нет</option>
-                  </select>
-                </label>
-              </div>
-              <div class="briefing-items" id="goalList"></div>
+            <div class="onboarding-list-panel" id="obDebtPanel">
+              <div class="onboarding-list" id="obDebtList"></div>
+              <button class="ghost-btn compact" id="obAddDebtBtn" type="button">Добавить долг</button>
             </div>
-          </div>
+          </section>
 
-          <div class="briefing-preview" id="briefingPreview"></div>
+          <section class="onboarding-step" data-onboarding-step="2">
+            <div class="onboarding-copy">
+              <span>03</span>
+              <div>
+                <h3>Минимум на жизнь</h3>
+                <p>Система не урежет эту сумму даже в антикризисном режиме</p>
+              </div>
+            </div>
+            <label class="onboarding-field">Минимум на жизнь
+              <input id="obLife" type="number" min="0" step="1" placeholder="Например, 35000">
+            </label>
+            <div class="onboarding-list-panel">
+              <div class="onboarding-list-head">
+                <strong>Комфортные траты</strong>
+                <button class="ghost-btn compact" id="obAddComfortBtn" type="button">Добавить</button>
+              </div>
+              <div class="onboarding-list" id="obComfortList"></div>
+            </div>
+          </section>
 
-          <div class="modal-actions briefing-actions">
-            <button class="ghost-btn" id="briefingBackBtn" type="button">Назад</button>
-            <button class="primary-btn" id="briefingNextBtn" type="button">Дальше</button>
-            <button class="primary-btn is-hidden" id="briefingApplyBtn" value="default" type="submit">Создать фонды</button>
-          </div>
+          <section class="onboarding-step" data-onboarding-step="3">
+            <div class="onboarding-preview-head" id="onboardingPreviewHead"></div>
+            <div class="onboarding-preview-list" id="onboardingPreviewList"></div>
+          </section>
+        </div>
+
+        <div class="onboarding-progress" aria-hidden="true"><span id="onboardingProgressBar"></span></div>
+        <div class="modal-actions onboarding-actions">
+          <button class="ghost-btn" id="onboardingSkipBtn" value="skip" type="submit">Пропустить</button>
+          <button class="ghost-btn" id="onboardingBackBtn" type="button">Назад</button>
+          <button class="primary-btn" id="onboardingNextBtn" type="button">Дальше</button>
+          <button class="primary-btn is-hidden" id="onboardingApplyBtn" value="apply" type="submit">Создать фонды</button>
         </div>
       </div>
     </form>
@@ -646,6 +489,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260604-2" defer></script>
+  <script src="app.js?v=20260604-3" defer></script>
 </body>
 </html>

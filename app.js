@@ -143,8 +143,8 @@ let isStorageReady = false;
 let isBooted = false;
 let saveTimer;
 let pendingResetAction = null;
-let briefingStep = 0;
-let hasAutoOfferedBriefing = false;
+let onboardingStep = 0;
+let onboardingResult = null;
 let lastOverflow = null;
 let isRequiredIncomeHidden = readBooleanPreference(REQUIRED_INCOME_VISIBILITY_KEY, LEGACY_REQUIRED_INCOME_VISIBILITY_KEY);
 let collapsedFinancePanels = readCollapsedFinancePanels();
@@ -222,32 +222,25 @@ const els = {
   addFundBtn: document.querySelector("#addFundBtn"),
   addMonthBtn: document.querySelector("#addMonthBtn"),
   editMonthBriefBtn: document.querySelector("#editMonthBriefBtn"),
-  briefingModal: document.querySelector("#briefingModal"),
-  briefingForm: document.querySelector("#briefingForm"),
-  briefingStepTitle: document.querySelector("#briefingStepTitle"),
-  briefingStepLabel: document.querySelector("#briefingStepLabel"),
-  briefingStepHint: document.querySelector("#briefingStepHint"),
-  briefingMeter: document.querySelector("#briefingMeter"),
-  briefingSteps: document.querySelectorAll(".briefing-step"),
-  briefingBackBtn: document.querySelector("#briefingBackBtn"),
-  briefingNextBtn: document.querySelector("#briefingNextBtn"),
-  briefingApplyBtn: document.querySelector("#briefingApplyBtn"),
-  briefingPreview: document.querySelector("#briefingPreview"),
-  briefMonthlyIncome: document.querySelector("#briefMonthlyIncome"),
-  briefIncomeType: document.querySelector("#briefIncomeType"),
-  briefIncomeFrequency: document.querySelector("#briefIncomeFrequency"),
-  requiredPaymentList: document.querySelector("#requiredPaymentList"),
-  addRequiredPaymentBtn: document.querySelector("#addRequiredPaymentBtn"),
-  debtList: document.querySelector("#debtList"),
-  addDebtBtn: document.querySelector("#addDebtBtn"),
-  comfortList: document.querySelector("#comfortList"),
-  addComfortBtn: document.querySelector("#addComfortBtn"),
-  goalList: document.querySelector("#goalList"),
-  addGoalBtn: document.querySelector("#addGoalBtn"),
-  briefCurrentReserve: document.querySelector("#briefCurrentReserve"),
-  briefReserveGoal: document.querySelector("#briefReserveGoal"),
-  briefHasBusiness: document.querySelector("#briefHasBusiness"),
-  briefBusinessNeedsInvestment: document.querySelector("#briefBusinessNeedsInvestment"),
+  onboardingModal: document.querySelector("#onboardingModal"),
+  onboardingForm: document.querySelector("#onboardingForm"),
+  onboardingTitle: document.querySelector("#onboardingTitle"),
+  onboardingSteps: document.querySelector("#onboardingSteps"),
+  onboardingStepNodes: document.querySelectorAll("[data-onboarding-step]"),
+  onboardingProgressBar: document.querySelector("#onboardingProgressBar"),
+  onboardingSkipBtn: document.querySelector("#onboardingSkipBtn"),
+  onboardingBackBtn: document.querySelector("#onboardingBackBtn"),
+  onboardingNextBtn: document.querySelector("#onboardingNextBtn"),
+  onboardingApplyBtn: document.querySelector("#onboardingApplyBtn"),
+  obIncome: document.querySelector("#obIncome"),
+  obLife: document.querySelector("#obLife"),
+  obDebtPanel: document.querySelector("#obDebtPanel"),
+  obDebtList: document.querySelector("#obDebtList"),
+  obAddDebtBtn: document.querySelector("#obAddDebtBtn"),
+  obComfortList: document.querySelector("#obComfortList"),
+  obAddComfortBtn: document.querySelector("#obAddComfortBtn"),
+  onboardingPreviewHead: document.querySelector("#onboardingPreviewHead"),
+  onboardingPreviewList: document.querySelector("#onboardingPreviewList"),
   fundModal: document.querySelector("#fundModal"),
   fundForm: document.querySelector("#fundForm"),
   fundModalTitle: document.querySelector("#fundModalTitle"),
@@ -1334,7 +1327,6 @@ function render() {
   renderMonthList();
   renderHistory();
   saveState();
-  maybeOfferBriefing();
 }
 
 function renderFinanceMode() {
@@ -2847,7 +2839,6 @@ function resetAll() {
 
   closeResetConfirm();
   state = createDefaultState();
-  hasAutoOfferedBriefing = false;
   showToast("Все данные сброшены.");
   render();
 }
@@ -3131,399 +3122,174 @@ function confirmPendingReset() {
   }
 }
 
-const briefingSteps = [
-  {
-    title: "Доход",
-    hint: "Понимаем ритм поступлений"
-  },
-  {
-    title: "Обязательные платежи",
-    hint: "Отделяем то, что нельзя пропустить"
-  },
-  {
-    title: "Долги",
-    hint: "Ищем самые опасные обязательства"
-  },
-  {
-    title: "Базовая жизнь",
-    hint: "Собираем устойчивый минимум"
-  },
-  {
-    title: "Комфорт и резерв",
-    hint: "Оставляем защиту и нормальную жизнь"
-  },
-  {
-    title: "Цели и развитие",
-    hint: "Расставляем желания по приоритетам"
-  }
+const onboardingStepMeta = [
+  { title: "Доход", label: "Доход" },
+  { title: "Долги", label: "Долги" },
+  { title: "Жизнь", label: "Жизнь" },
+  { title: "Превью фондов", label: "Превью" }
 ];
-
-function isDefaultFundEquivalent(fund, defaultFund) {
-  const comparableFields = [
-    "name",
-    "icon",
-    "color",
-    "balance",
-    "monthBalance",
-    "monthTarget",
-    "target",
-    "percent",
-    "priority",
-    "category",
-    "description"
-  ];
-
-  return comparableFields.every((field) => {
-    if (typeof defaultFund[field] === "number") {
-      return roundMoney(fund[field]) === roundMoney(defaultFund[field]);
-    }
-    return String(fund[field] || "") === String(defaultFund[field] || "");
-  }) && !fund.isFrozen && (!fund.type || fund.type === "custom");
-}
-
-function hasStandardFundsOnly(nextState = state) {
-  const funds = Array.isArray(nextState.funds) ? nextState.funds : [];
-  if (funds.length !== defaultFunds.length) {
-    return false;
-  }
-
-  return defaultFunds.every((defaultFund) => {
-    const fund = funds.find((item) => item.name === defaultFund.name);
-    return fund && isDefaultFundEquivalent(fund, defaultFund);
-  });
-}
-
-function shouldOfferBriefing(nextState = state) {
-  return Boolean(session?.user?.id)
-    && isStorageReady
-    && hasStandardFundsOnly(nextState)
-    && !nextState.briefing
-    && !nextState.history.length
-    && !nextState.months.length;
-}
-function openQuickStart() {
-  const modal = document.querySelector("#quickStartModal");
-  if (!modal) return;
-
-  let currentStep = 0;
-  let qsOverdue = false;
-
-  const steps = modal.querySelectorAll("[data-qs-step]");
-  const dots = modal.querySelectorAll(".qs-dots span");
-  const nextBtn = modal.querySelector("#qsNextBtn");
-  const applyBtn = modal.querySelector("#qsApplyBtn");
-  const skipBtn = modal.querySelector("#qsSkipBtn");
-
-  function showStep(index) {
-    steps.forEach((step, i) => {
-      step.classList.toggle("is-active", i === index);
-    });
-    dots.forEach((dot, i) => {
-      dot.classList.toggle("is-active", i === index);
-    });
-
-    const isLast = index === steps.length - 1;
-    nextBtn.classList.toggle("is-hidden", isLast);
-    applyBtn.classList.toggle("is-hidden", !isLast);
-
-    if (isLast) {
-      renderQsResult();
-    }
-  }
-
-  function renderQsResult() {
-    const income = roundMoney(document.querySelector("#qsIncome").value) || 0;
-    const obligations = roundMoney(document.querySelector("#qsObligations").value) || 0;
-    const requiredPercent = income > 0 ? Math.round(obligations / income * 100) : obligations > 0 ? 100 : 0;
-    const mode = qsOverdue || requiredPercent >= 70
-      ? "Антикризисный"
-      : requiredPercent >= 50
-        ? "Стабилизация"
-        : "Развитие";
-
-    const modeClass = mode === "Антикризисный" ? "is-crisis" : mode === "Стабилизация" ? "is-stable" : "is-growth";
-
-    const modeText = mode === "Антикризисный"
-      ? "Сейчас главное — защитить обязательные платежи и не допустить новых просрочек."
-      : mode === "Стабилизация"
-        ? "Ситуация управляемая. Держим платежи под контролем и начинаем строить резерв."
-        : "Хорошая база. Можно активно двигать цели и наращивать резерв.";
-
-    const tip = mode === "Антикризисный"
-      ? "💡 Сначала настрой фонды для обязательных платежей и долгов — система сама поставит остальное на паузу."
-      : mode === "Стабилизация"
-        ? "💡 Начни с фонда резерва — даже небольшая подушка снижает стресс и защищает от новых долгов."
-        : "💡 Настрой фонды под свои цели — система будет автоматически делить каждое поступление.";
-
-    const result = document.querySelector("#qsResult");
-    result.innerHTML = `
-      <div class="qs-result-mode ${modeClass}">
-        <span>Твой режим</span>
-        <strong>${mode}</strong>
-        <p>${modeText}</p>
-      </div>
-      <div class="qs-result-tip">${tip}</div>
-    `;
-  }
-
-  modal.querySelectorAll(".qs-choice-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      modal.querySelectorAll(".qs-choice-btn").forEach((b) => b.classList.remove("is-selected"));
-      btn.classList.add("is-selected");
-      qsOverdue = btn.dataset.qsChoice === "true";
-
-      setTimeout(() => {
-        currentStep = 3;
-        showStep(currentStep);
-      }, 300);
-    });
-  });
-
-  nextBtn.addEventListener("click", () => {
-    if (currentStep < 2) {
-      currentStep++;
-      showStep(currentStep);
-    }
-  });
-
-  skipBtn.addEventListener("click", () => {
-    modal.close();
-    state.briefing = state.briefing || { skippedQuickStart: true, completedAt: new Date().toISOString() };
-    saveState();
-  });
-
-  applyBtn.addEventListener("click", () => {
-    modal.close();
-    state.briefing = state.briefing || { skippedQuickStart: true, completedAt: new Date().toISOString() };
-    saveState();
-    openBriefing({ skipPermissionCheck: true });
-  });
-
-  showStep(0);
-  modal.showModal();
-}
-
-function shouldOfferQuickStart() {
-  const hasRealHistory = state.history.filter(
-    (item) => item.type === "Доход" || item.type === "Пополнение"
-  ).length > 0;
-
-  return Boolean(session?.user?.id)
-    && isStorageReady
-    && !state.briefing
-    && !hasRealHistory;
-}
-function maybeOfferBriefing() {
-  if (hasAutoOfferedBriefing) {
-    return;
-  }
-
-  if (els.briefingModal.open) {
-    return;
-  }
-
-  if (shouldOfferQuickStart()) {
-    hasAutoOfferedBriefing = true;
-    window.setTimeout(() => openQuickStart(), 250);
-    return;
-  }
-
-  if (shouldOfferBriefing()) {
-    hasAutoOfferedBriefing = true;
-    window.setTimeout(() => openBriefing({ skipPermissionCheck: true }), 250);
-  }
-}
-
-function openBriefing(options = {}) {
-  if (!options.skipPermissionCheck && !canChangeData()) {
-    return;
-  }
-
-  if (!els.requiredPaymentList.children.length) {
-    addRequiredPaymentRow();
-  }
-
-  if (!els.comfortList.children.length) {
-    addComfortRow();
-  }
-
-  if (!els.goalList.children.length) {
-    addGoalRow();
-  }
-
-  briefingStep = 0;
-  updateBriefingStep();
-  els.briefingModal.showModal();
-}
-
-function updateBriefingStep() {
-  els.briefingSteps.forEach((step, index) => {
-    step.classList.toggle("is-active", index === briefingStep);
-  });
-
-  const step = briefingSteps[briefingStep];
-  els.briefingStepTitle.textContent = step.title;
-  els.briefingStepLabel.textContent = `Шаг ${briefingStep + 1} из ${briefingSteps.length}`;
-  els.briefingStepHint.textContent = step.hint;
-  els.briefingMeter.style.setProperty("--progress", `${roundMoney((briefingStep + 1) / briefingSteps.length * 100)}%`);
-  els.briefingBackBtn.disabled = briefingStep === 0;
-  els.briefingNextBtn.classList.toggle("is-hidden", briefingStep === briefingSteps.length - 1);
-  els.briefingApplyBtn.classList.toggle("is-hidden", briefingStep !== briefingSteps.length - 1);
-  renderBriefingPreview();
-}
-
-function moveBriefingStep(direction) {
-  briefingStep = Math.min(briefingSteps.length - 1, Math.max(0, briefingStep + direction));
-  updateBriefingStep();
-}
-
-function addRequiredPaymentRow(value = {}) {
-  els.requiredPaymentList.insertAdjacentHTML("beforeend", `
-    <div class="briefing-item" data-briefing-item>
-      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Название">
-      <input data-field="amount" type="number" min="0" step="1" value="${value.amount || ""}" placeholder="Сумма">
-      <input data-field="date" type="text" value="${escapeHtml(value.date || "")}" placeholder="Дата">
-      <select data-field="hasOverdue">
-        <option value="false">Нет просрочки</option>
-        <option value="true" ${value.hasOverdue ? "selected" : ""}>Есть просрочка</option>
-      </select>
-      <select data-field="criticality">
-        ${["Очень высокая", "Высокая", "Средняя", "Низкая"].map((item) => `<option ${value.criticality === item ? "selected" : ""}>${item}</option>`).join("")}
-      </select>
-      <button class="icon-btn" type="button" data-remove-briefing-item aria-label="Удалить">×</button>
-    </div>
-  `);
-}
-
-function addDebtRow(value = {}) {
-  els.debtList.insertAdjacentHTML("beforeend", `
-    <div class="briefing-item" data-briefing-item>
-      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Долг">
-      <input data-field="balance" type="number" min="0" step="1" value="${value.balance || ""}" placeholder="Остаток">
-      <input data-field="monthlyPayment" type="number" min="0" step="1" value="${value.monthlyPayment || ""}" placeholder="Платеж">
-      <input data-field="interestRate" type="text" value="${escapeHtml(value.interestRate || "")}" placeholder="Ставка">
-      <select data-field="hasOverdue">
-        <option value="false">Нет просрочки</option>
-        <option value="true" ${value.hasOverdue ? "selected" : ""}>Есть просрочка</option>
-      </select>
-      <select data-field="type">
-        ${["Кредит", "Кредитная карта", "Рассрочка", "Долг человеку", "Ипотека", "Другое"].map((item) => `<option ${value.type === item ? "selected" : ""}>${item}</option>`).join("")}
-      </select>
-      <button class="icon-btn" type="button" data-remove-briefing-item aria-label="Удалить">×</button>
-    </div>
-  `);
-}
-
-function addComfortRow(value = {}) {
-  els.comfortList.insertAdjacentHTML("beforeend", `
-    <div class="briefing-item compact-briefing-item" data-briefing-item>
-      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Например, кофе">
-      <input data-field="amount" type="number" min="0" step="1" value="${value.amount || ""}" placeholder="Сумма">
-      <select data-field="canReduce">
-        <option value="true">Можно уменьшить</option>
-        <option value="false" ${value.canReduce === false ? "selected" : ""}>Нельзя уменьшить</option>
-      </select>
-      <button class="icon-btn" type="button" data-remove-briefing-item aria-label="Удалить">×</button>
-    </div>
-  `);
-}
-
-function addGoalRow(value = {}) {
-  els.goalList.insertAdjacentHTML("beforeend", `
-    <div class="briefing-item" data-briefing-item>
-      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Цель">
-      <input data-field="amount" type="number" min="0" step="1" value="${value.amount || ""}" placeholder="Стоимость">
-      <select data-field="priority">
-        ${[5, 4, 3, 2, 1].map((item) => `<option value="${item}" ${Number(value.priority) === item ? "selected" : ""}>Приоритет ${item}</option>`).join("")}
-      </select>
-      <select data-field="type">
-        ${["Дом / квартира", "Бизнес", "Техника", "Образование", "Здоровье", "Отдых", "Хобби", "Другое"].map((item) => `<option ${value.type === item ? "selected" : ""}>${item}</option>`).join("")}
-      </select>
-      <input data-field="urgency" type="text" value="${escapeHtml(value.urgency || "")}" placeholder="Срочность">
-      <button class="icon-btn" type="button" data-remove-briefing-item aria-label="Удалить">×</button>
-    </div>
-  `);
-}
-
-function collectBriefingRows(listNode, numericFields = []) {
-  return [...listNode.querySelectorAll("[data-briefing-item]")]
-    .map((row) => {
-      const item = {};
-      row.querySelectorAll("[data-field]").forEach((field) => {
-        const key = field.dataset.field;
-        if (field.value === "true" || field.value === "false") {
-          item[key] = field.value === "true";
-        } else if (numericFields.includes(key)) {
-          item[key] = roundMoney(field.value);
-        } else {
-          item[key] = field.value.trim();
-        }
-      });
-      return item;
-    })
-    .filter((item) => {
-      const hasName = typeof item.name === "string" && item.name.length > 0;
-      const hasNumericValue = numericFields.some((key) => Number(item[key]) > 0);
-      return hasName || hasNumericValue;
-    });
-}
-
-function collectBriefingData() {
-  const lifeExpenses = {};
-  document.querySelectorAll("[data-life-expense]").forEach((input) => {
-    lifeExpenses[input.dataset.lifeExpense] = roundMoney(input.value);
-  });
-
-  return {
-    monthlyIncome: roundMoney(els.briefMonthlyIncome.value),
-    incomeType: els.briefIncomeType.value,
-    incomeFrequency: els.briefIncomeFrequency.value,
-    requiredPayments: collectBriefingRows(els.requiredPaymentList, ["amount"]),
-    debts: collectBriefingRows(els.debtList, ["balance", "monthlyPayment", "interestRate"]),
-    lifeExpenses,
-    comfortExpenses: collectBriefingRows(els.comfortList, ["amount"]),
-    currentReserve: roundMoney(els.briefCurrentReserve.value),
-    reserveGoal: roundMoney(els.briefReserveGoal.value),
-    goals: collectBriefingRows(els.goalList, ["amount", "priority"]),
-    hasBusiness: els.briefHasBusiness.value,
-    businessNeedsInvestment: els.briefBusinessNeedsInvestment.value
-  };
-}
-
-function criticalityPriority(value) {
-  return {
-    "Очень высокая": 5,
-    "Высокая": 5,
-    "Средняя": 4,
-    "Низкая": 3
-  }[value] || 4;
-}
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function createBriefFund(data) {
+function shouldOfferOnboarding() {
+  const hasIncomeHistory = state.history.some((item) => item.type === "Доход");
+  return Boolean(session?.user?.id)
+    && isStorageReady
+    && state.briefing === null
+    && !hasIncomeHistory;
+}
+
+function maybeOfferOnboarding() {
+  if (!shouldOfferOnboarding() || els.onboardingModal?.open) {
+    return;
+  }
+
+  window.setTimeout(() => {
+    if (shouldOfferOnboarding()) {
+      openOnboarding();
+    }
+  }, 600);
+}
+
+function openOnboarding() {
+  if (!els.onboardingModal) {
+    return;
+  }
+
+  if (!els.obDebtList.children.length) {
+    addOnboardingDebtRow();
+  }
+
+  onboardingStep = 0;
+  onboardingResult = null;
+  setOnboardingDebtChoice("yes");
+  renderOnboardingStep();
+  els.onboardingModal.showModal();
+}
+
+function renderOnboardingStep() {
+  els.onboardingStepNodes.forEach((step, index) => {
+    step.classList.toggle("is-active", index === onboardingStep);
+  });
+
+  els.onboardingTitle.textContent = onboardingStepMeta[onboardingStep].title;
+  els.onboardingSteps.innerHTML = onboardingStepMeta.map((step, index) => {
+    const stateClass = index < onboardingStep ? "is-done" : index === onboardingStep ? "is-active" : "is-pending";
+    const marker = index < onboardingStep ? "✓" : index + 1;
+    return `
+      <span class="onboarding-step-dot ${stateClass}">
+        <b>${marker}</b>
+        <em>${escapeHtml(step.label)}</em>
+      </span>
+    `;
+  }).join("");
+
+  const progress = roundMoney((onboardingStep + 1) / onboardingStepMeta.length * 100);
+  els.onboardingProgressBar.style.setProperty("--progress", `${progress}%`);
+  els.onboardingBackBtn.disabled = onboardingStep === 0;
+  els.onboardingNextBtn.classList.toggle("is-hidden", onboardingStep === onboardingStepMeta.length - 1);
+  els.onboardingApplyBtn.classList.toggle("is-hidden", onboardingStep !== onboardingStepMeta.length - 1);
+
+  if (onboardingStep === onboardingStepMeta.length - 1) {
+    renderOnboardingPreview();
+  }
+}
+
+function moveOnboardingStep(direction) {
+  onboardingStep = clamp(onboardingStep + direction, 0, onboardingStepMeta.length - 1);
+  renderOnboardingStep();
+}
+
+function setOnboardingDebtChoice(value) {
+  const hasDebt = value !== "no";
+  els.onboardingForm.querySelectorAll("[data-ob-debt-choice]").forEach((button) => {
+    button.classList.toggle("is-selected", button.dataset.obDebtChoice === (hasDebt ? "yes" : "no"));
+  });
+  els.obDebtPanel.classList.toggle("is-hidden", !hasDebt);
+}
+
+function addOnboardingDebtRow(value = {}) {
+  els.obDebtList.insertAdjacentHTML("beforeend", `
+    <div class="onboarding-row onboarding-debt-row" data-ob-debt-row>
+      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Название долга">
+      <input data-field="monthlyPayment" type="number" min="0" step="1" value="${value.monthlyPayment || ""}" placeholder="Платеж / мес.">
+      <button class="icon-btn" type="button" data-ob-remove-row aria-label="Удалить">×</button>
+      <button class="onboarding-details-toggle" type="button" data-ob-toggle-details>Добавить детали</button>
+      <div class="onboarding-row-details is-hidden" data-ob-details>
+        <input data-field="balance" type="number" min="0" step="1" value="${value.balance || ""}" placeholder="Остаток долга">
+        <input data-field="annualRate" type="text" inputmode="decimal" value="${escapeHtml(value.annualRate || "")}" placeholder="Ставка, %">
+        <input data-field="paymentDate" type="text" value="${escapeHtml(value.paymentDate || "")}" placeholder="Дата платежа">
+        <label class="checkbox-label">
+          <input data-field="hasOverdue" type="checkbox" ${value.hasOverdue ? "checked" : ""}>
+          <span>Есть просрочка</span>
+        </label>
+      </div>
+    </div>
+  `);
+}
+
+function addOnboardingComfortRow(value = {}) {
+  els.obComfortList.insertAdjacentHTML("beforeend", `
+    <div class="onboarding-row onboarding-comfort-row" data-ob-comfort-row>
+      <input data-field="name" type="text" value="${escapeHtml(value.name || "")}" placeholder="Название траты">
+      <input data-field="amount" type="number" min="0" step="1" value="${value.amount || ""}" placeholder="Сумма">
+      <button class="icon-btn" type="button" data-ob-remove-row aria-label="Удалить">×</button>
+    </div>
+  `);
+}
+
+function collectOnboardingRows(listNode, selector, numericFields = []) {
+  return [...listNode.querySelectorAll(selector)].map((row) => {
+    const item = {};
+    row.querySelectorAll("[data-field]").forEach((field) => {
+      const key = field.dataset.field;
+      if (field.type === "checkbox") {
+        item[key] = field.checked;
+      } else if (numericFields.includes(key)) {
+        item[key] = roundMoney(field.value);
+      } else {
+        item[key] = field.value.trim();
+      }
+    });
+    return item;
+  }).filter((item) => {
+    const hasName = typeof item.name === "string" && item.name.length > 0;
+    const hasAmount = numericFields.some((key) => Number(item[key]) > 0);
+    return hasName || hasAmount;
+  });
+}
+
+function collectOnboardingData() {
+  const hasDebt = !els.obDebtPanel.classList.contains("is-hidden");
+  return {
+    monthlyIncome: roundMoney(els.obIncome.value),
+    debts: hasDebt ? collectOnboardingRows(els.obDebtList, "[data-ob-debt-row]", ["monthlyPayment", "balance", "annualRate"]) : [],
+    lifeMinimum: roundMoney(els.obLife.value),
+    comfortExpenses: collectOnboardingRows(els.obComfortList, "[data-ob-comfort-row]", ["amount"])
+  };
+}
+
+function createOnboardingFund(data) {
   const fundType = normalizeFundType(data.fundType || data.type, data);
   return {
-    id: createId(),
+    id: data.id || createId(),
+    name: data.name,
     icon: data.icon || "◌",
     color: data.color || "#52d6ff",
-    balance: data.balance || 0,
+    balance: roundMoney(data.balance),
     monthBalance: 0,
-    monthTarget: roundMoney(data.monthTarget || 0),
-    fundType,
-    monthlyLimit: ["spending", "required"].includes(fundType) ? roundMoney(data.monthTarget || 0) : 0,
+    monthTarget: roundMoney(data.monthTarget),
+    monthlyLimit: ["spending", "required"].includes(fundType) ? roundMoney(data.monthTarget) : 0,
     spentThisMonth: 0,
-    target: roundMoney(data.target || data.monthTarget || 0),
+    target: roundMoney(data.target || data.monthTarget),
     percent: 0,
     priority: data.priority || 3,
-    name: data.name,
+    fundType,
+    category: normalizeCategory(data.category || inferFundCategory(data)),
     description: data.description || "",
     type: data.type || fundType,
-    category: normalizeCategory(data.category || inferFundCategory(data)),
-    block: data.block,
-    weight: Math.max(1, Number(data.weight) || 1),
     isFrozen: Boolean(data.isFrozen),
     pauseType: data.pauseType || null,
     pauseReason: data.pauseReason || "",
@@ -3533,343 +3299,265 @@ function createBriefFund(data) {
     minPayment: roundMoney(data.minPayment),
     paymentDate: data.paymentDate || "",
     hasOverdue: Boolean(data.hasOverdue),
-    extraPayment: roundMoney(data.extraPayment),
+    extraPayment: 0,
     debtType: normalizeDebtType(data.debtType)
   };
 }
 
-function determineBriefingMode(data, requiredTotal) {
+function onboardingModeFor(data, requiredTotal) {
   const income = data.monthlyIncome || 1;
   const requiredPercent = requiredTotal / income * 100;
-  const hasOverdue = data.requiredPayments.some((item) => item.hasOverdue)
-    || data.debts.some((item) => item.hasOverdue);
+  const hasOverdue = data.debts.some((debt) => debt.hasOverdue);
 
   if (requiredPercent >= 70 || hasOverdue) {
-    return { name: "Антикризисный", requiredPercent };
+    return {
+      name: "Антикризисный",
+      requiredPercent,
+      description: "Сначала закрываем просрочки и защищаем обязательные платежи, низкие приоритеты временно ставим на паузу."
+    };
   }
 
   if (requiredPercent >= 50) {
-    return { name: "Стабилизация", requiredPercent };
+    return {
+      name: "Стабилизация",
+      requiredPercent,
+      description: "Обязательства заметные, поэтому держим платежи под контролем и параллельно собираем резерв."
+    };
   }
 
-  return { name: "Развитие", requiredPercent };
-}
-
-function blockSharesFor(mode, requiredPercent, presentBlocks) {
-  const shares = {
-    obligations: 0,
-    life: 0,
-    comfort: 0,
-    reserve: 0,
-    goals: 0
+  return {
+    name: "Развитие",
+    requiredPercent,
+    description: "Обязательства в рабочем диапазоне, можно активнее распределять деньги в комфорт, резерв и цели."
   };
-
-  if (mode === "Антикризисный") {
-    shares.obligations = presentBlocks.obligations ? clamp(requiredPercent, 75, 85) : 0;
-    shares.comfort = presentBlocks.comfort ? 5 : 0;
-    shares.reserve = presentBlocks.reserve ? 5 : 0;
-    shares.goals = 0;
-  } else if (mode === "Стабилизация") {
-    shares.obligations = presentBlocks.obligations ? clamp(requiredPercent, 50, 70) : 0;
-    shares.life = presentBlocks.life ? 20 : 0;
-    shares.comfort = presentBlocks.comfort ? 5 : 0;
-    shares.reserve = presentBlocks.reserve ? 10 : 0;
-    shares.goals = presentBlocks.goals ? 10 : 0;
-  } else {
-    shares.obligations = presentBlocks.obligations ? clamp(requiredPercent, 20, 50) : 0;
-    shares.life = presentBlocks.life ? 25 : 0;
-    shares.comfort = presentBlocks.comfort ? 8 : 0;
-    shares.reserve = presentBlocks.reserve ? 12 : 0;
-    shares.goals = presentBlocks.goals ? 25 : 0;
-  }
-
-  const used = Object.values(shares).reduce((sum, value) => sum + value, 0);
-  if (used > 100) {
-    Object.keys(shares).forEach((key) => {
-      shares[key] = roundMoney(shares[key] / used * 100);
-    });
-    return shares;
-  }
-
-  const preferredBlock = presentBlocks.life ? "life" : Object.keys(presentBlocks).find((key) => presentBlocks[key]);
-  if (preferredBlock) {
-    shares[preferredBlock] += Math.max(0, 100 - used);
-  }
-
-  return shares;
 }
 
-function assignBriefingPercents(funds, shares) {
+function distributeOnboardingPercents(funds) {
   const active = funds.filter((fund) => !fund.isFrozen);
-  Object.entries(shares).forEach(([block, share]) => {
-    const blockFunds = active.filter((fund) => fund.block === block);
-    const totalWeight = blockFunds.reduce((sum, fund) => sum + fund.weight, 0);
-    blockFunds.forEach((fund) => {
-      fund.percent = totalWeight ? roundMoney(share * fund.weight / totalWeight) : 0;
+  const totalTarget = active.reduce((sum, fund) => sum + Math.max(0, Number(fund.monthTarget || 0)), 0);
+
+  if (!active.length) {
+    return funds;
+  }
+
+  if (!totalTarget) {
+    const equalShare = roundMoney(100 / active.length);
+    active.forEach((fund) => {
+      fund.percent = equalShare;
     });
-  });
+  } else {
+    active.forEach((fund) => {
+      fund.percent = roundMoney(Number(fund.monthTarget || 0) / totalTarget * 100);
+    });
+  }
 
   const activeTotal = active.reduce((sum, fund) => sum + fund.percent, 0);
   const diff = roundMoney(100 - activeTotal);
-  if (active.length && diff !== 0) {
+  if (diff !== 0) {
     active[0].percent = roundMoney(active[0].percent + diff);
   }
 
   funds.filter((fund) => fund.isFrozen).forEach((fund) => {
     fund.percent = 0;
   });
-
-  return funds.map(({ block, weight, ...fund }) => fund);
+  return funds;
 }
 
-function buildBriefingResult(data) {
-  const requiredTotal = data.requiredPayments.reduce((sum, item) => sum + item.amount, 0)
-    + data.debts.reduce((sum, debt) => sum + debt.monthlyPayment, 0);
-  const mode = determineBriefingMode(data, requiredTotal);
+function buildOnboardingResult(data = collectOnboardingData()) {
+  const debtTotal = data.debts.reduce((sum, debt) => sum + Number(debt.monthlyPayment || 0), 0);
+  const requiredTotal = debtTotal;
+  const mode = onboardingModeFor(data, requiredTotal);
+  const isCrisis = mode.name === "Антикризисный";
   const funds = [];
 
-  data.requiredPayments.forEach((payment) => {
-    if (!payment.name || !payment.amount) {
+  data.debts.forEach((debt, index) => {
+    const payment = debt.monthlyPayment || 0;
+    if (!debt.name && !payment && !debt.balance) {
       return;
     }
-    funds.push(createBriefFund({
-      name: payment.name,
-      icon: "▣",
-      color: "#3b82f6",
-      type: "required_payment",
-      block: "obligations",
-      priority: criticalityPriority(payment.criticality),
-      monthTarget: payment.amount,
-      target: payment.amount,
-      weight: payment.amount,
-      description: `Обязательный платеж${payment.date ? `, дата: ${payment.date}` : ""}.`
-    }));
-  });
-
-  data.debts.forEach((debt) => {
-    if (!debt.name || (!debt.balance && !debt.monthlyPayment)) {
-      return;
-    }
-    const isDanger = debt.hasOverdue || debt.type === "Кредитная карта";
-    funds.push(createBriefFund({
-      name: debt.name,
-      icon: isDanger ? "!" : "▣",
-      color: isDanger ? "#ff6b7a" : "#3b82f6",
-      type: isDanger ? "danger_debt" : "debt",
-      block: "obligations",
-      priority: isDanger ? 5 : 4,
-      monthTarget: debt.monthlyPayment || 0,
-      target: debt.balance || debt.monthlyPayment || 0,
-      weight: debt.monthlyPayment || debt.balance || 1,
+    funds.push(createOnboardingFund({
+      name: debt.name || `Долг ${index + 1}`,
+      icon: debt.hasOverdue ? "!" : "▣",
+      color: debt.hasOverdue ? "#ff6b7a" : "#3b82f6",
+      fundType: "debt",
+      type: "debt",
+      category: "Кредиты",
+      priority: 5,
+      monthTarget: payment,
+      target: debt.balance || payment,
       debtBalance: debt.balance || 0,
-      annualRate: debt.interestRate || 0,
-      minPayment: debt.monthlyPayment || 0,
+      annualRate: debt.annualRate || 0,
+      minPayment: payment,
+      paymentDate: debt.paymentDate || "",
       hasOverdue: debt.hasOverdue,
-      debtType: {
-        "Кредитная карта": "credit_card",
-        "Кредит": "loan",
-        "Долг человеку": "person",
-        "Рассрочка": "installment"
-      }[debt.type] || "other",
-      description: `${debt.type || "Долг"}${debt.hasOverdue ? " с просрочкой" : ""}.`
+      debtType: "loan",
+      description: debt.hasOverdue ? "Долг с просрочкой." : "Долговой платеж."
     }));
   });
 
-  const lifeLabels = {
-    food: ["Еда и быт", "#22c55e", "●"],
-    transport: ["Транспорт", "#14b8a6", "△"],
-    phoneInternet: ["Связь / интернет", "#1f8fff", "◌"],
-    health: ["Здоровье", "#ef4444", "+"],
-    subscriptions: ["Рабочие подписки", "#8b5cf6", "□"],
-    household: ["Бытовые мелочи", "#f59e0b", "◇"]
-  };
-  Object.entries(data.lifeExpenses).forEach(([key, amount]) => {
-    if (!amount) {
-      return;
-    }
-    const [name, color, icon] = lifeLabels[key];
-    funds.push(createBriefFund({
-      name,
-      icon,
-      color,
-      type: "life",
-      block: "life",
-      priority: key === "health" ? 5 : 4,
-      monthTarget: amount,
-      target: amount,
-      weight: amount,
-      description: "Базовая жизнь и рабочая устойчивость."
+  if (data.lifeMinimum > 0) {
+    funds.push(createOnboardingFund({
+      name: "Жизнь и быт",
+      icon: "●",
+      color: "#22c55e",
+      fundType: "spending",
+      type: "spending",
+      category: "Жизнь и быт",
+      priority: 4,
+      monthTarget: data.lifeMinimum,
+      target: data.lifeMinimum,
+      description: "Минимум на жизнь, который система не урезает."
     }));
-  });
+  }
 
-  data.comfortExpenses.forEach((expense) => {
-    if (!expense.name || !expense.amount) {
+  data.comfortExpenses.forEach((expense, index) => {
+    const amount = expense.amount || 0;
+    if (!expense.name && !amount) {
       return;
     }
-    funds.push(createBriefFund({
-      name: expense.name,
+    funds.push(createOnboardingFund({
+      name: expense.name || `Комфорт ${index + 1}`,
       icon: "○",
       color: "#ec4899",
-      type: "comfort",
-      block: "comfort",
-      priority: expense.canReduce ? 3 : 4,
-      monthTarget: expense.amount,
-      target: expense.amount,
-      weight: expense.amount,
-      description: expense.canReduce ? "Комфортный расход, который можно временно уменьшить." : "Комфортный расход, который лучше оставить отдельным лимитом."
-    }));
-  });
-
-  if (data.reserveGoal > data.currentReserve) {
-    funds.push(createBriefFund({
-      name: "Резерв",
-      icon: "◈",
-      color: "#14b8a6",
-      type: "reserve",
-      block: "reserve",
-      priority: 4,
-      balance: data.currentReserve,
-      monthTarget: Math.max(1000, roundMoney((data.reserveGoal - data.currentReserve) * 0.2)),
-      target: data.reserveGoal,
-      weight: data.reserveGoal,
-      description: "Подушка безопасности на непредвиденные ситуации."
-    }));
-  }
-
-  data.goals.forEach((goal) => {
-    if (!goal.name || !goal.amount) {
-      return;
-    }
-    funds.push(createBriefFund({
-      name: goal.name,
-      icon: goal.type === "Бизнес" ? "△" : "◇",
-      color: goal.type === "Бизнес" ? "#22c55e" : "#f59e0b",
-      type: goal.type === "Бизнес" ? "business_goal" : "goal",
-      block: "goals",
-      priority: Number(goal.priority) || 3,
-      monthTarget: Math.max(1000, roundMoney(goal.amount * 0.1)),
-      target: goal.amount,
-      weight: Math.max(1, (Number(goal.priority) || 3) * goal.amount),
-      isFrozen: mode.name === "Антикризисный" && Number(goal.priority) <= 3,
-      description: `${goal.type || "Цель"}${goal.urgency ? `, срочность: ${goal.urgency}` : ""}.`
-    }));
-  });
-
-  if (data.hasBusiness !== "no" && !funds.some((fund) => fund.type === "business_goal")) {
-    funds.push(createBriefFund({
-      name: "Развитие / бизнес",
-      icon: "△",
-      color: "#22c55e",
-      type: "business",
-      block: "goals",
+      fundType: "spending",
+      type: "spending",
+      category: "Комфорт",
       priority: 3,
-      monthTarget: 5000,
+      monthTarget: amount,
+      target: amount,
+      isFrozen: isCrisis,
+      pauseType: isCrisis ? "system" : null,
+      pauseReason: isCrisis ? "антикризисный режим" : "",
+      description: "Комфортная трата."
+    }));
+  });
+
+  funds.push(createOnboardingFund({
+    name: "Резерв",
+    icon: "◈",
+    color: "#14b8a6",
+    fundType: "reserve",
+    type: "reserve",
+    category: "Резерв",
+    priority: 4,
+    monthTarget: Math.max(1000, roundMoney((data.monthlyIncome || 0) * 0.1)),
+    target: roundMoney((data.monthlyIncome || 0) * 3),
+    description: "Подушка безопасности на три месячных дохода."
+  }));
+
+  if (!funds.some((fund) => fund.category === "Обязательные платежи")) {
+    funds.push(createOnboardingFund({
+      name: "Обязательные платежи",
+      icon: "▣",
+      color: "#1f8fff",
+      fundType: "required",
+      type: "required",
+      category: "Обязательные платежи",
+      priority: 5,
+      monthTarget: 0,
       target: 0,
-      weight: 3,
-      isFrozen: mode.name === "Антикризисный",
-      description: data.businessNeedsInvestment === "yes" ? "Регулярные вложения в проект." : "Будущий фонд развития дохода."
+      description: "Фонд для обязательных платежей, которые появятся позже."
     }));
   }
 
-  if (!funds.length) {
-    funds.push(...defaultFunds.map((fund) => createBriefFund({
-      ...fund,
-      type: "starter",
-      block: fund.name === "Резерв" ? "reserve" : fund.name === "Личное" ? "comfort" : fund.name === "Обязательные платежи" ? "obligations" : "goals",
-      weight: fund.percent,
-      description: fund.description
-    })));
-  }
-
-  const activeBlocks = funds.reduce((blocks, fund) => {
-    if (!fund.isFrozen) {
-      blocks[fund.block] = true;
-    }
-    return blocks;
-  }, {});
-  const shares = blockSharesFor(mode.name, mode.requiredPercent, activeBlocks);
-  const finalFunds = assignBriefingPercents(funds, shares).map((fund) => (
-    mode.name === "Антикризисный" && fund.isFrozen
-      ? {
-          ...fund,
-          isFrozen: false,
-          pauseType: "system",
-          pauseReason: "антикризисный режим"
-        }
-      : fund
-  ));
-  const frozenCount = finalFunds.filter((fund) => isSystemPauseRecommended(fund, mode.name)).length;
-  const recommendations = [
-    mode.name === "Антикризисный"
-      ? "Сначала защищаем обязательные платежи и проблемные долги. Цели с приоритетом 1-3 временно поставлены на паузу."
-      : mode.name === "Стабилизация"
-        ? "Держим платежи под контролем, параллельно создаем резерв и оставляем небольшой поток на цели."
-        : "Можно развивать цели и проекты, но резерв остается отдельным обязательным направлением.",
-    "Когда фонд достигнет цели, его процент стоит перекинуть в следующий активный фонд с самым высоким приоритетом.",
-    "Если закрыт долг человеку: 40% освободившегося процента в резерв, 40% в главный долг, 20% в цели или бизнес."
-  ];
-
+  const finalFunds = distributeOnboardingPercents(funds);
+  const activeFunds = finalFunds.filter((fund) => !fund.isFrozen);
+  const pausedFunds = finalFunds.filter((fund) => fund.isFrozen);
   return {
     data,
     mode: mode.name,
+    modeDescription: mode.description,
     requiredPercent: roundMoney(mode.requiredPercent),
-    shares,
-    frozenCount,
-    recommendations,
-    funds: finalFunds
+    funds: finalFunds,
+    activeFunds,
+    pausedFunds
   };
 }
 
-function renderBriefingPreview() {
-  const result = buildBriefingResult(collectBriefingData());
-  els.briefingPreview.innerHTML = `
-    <div>
+function renderOnboardingPreview() {
+  onboardingResult = buildOnboardingResult();
+  const income = onboardingResult.data.monthlyIncome || 0;
+  els.onboardingPreviewHead.innerHTML = `
+    <div class="onboarding-mode">
       <span>Режим</span>
-      <strong>${result.mode}</strong>
+      <strong>${escapeHtml(onboardingResult.mode)}</strong>
+      <p>${escapeHtml(onboardingResult.modeDescription)}</p>
     </div>
-    <div>
+    <div class="onboarding-mode-meta">
       <span>Обязательства</span>
-      <strong>${result.requiredPercent}% дохода</strong>
+      <strong>${onboardingResult.requiredPercent}% дохода</strong>
     </div>
-    <div>
-      <span>Будет создано</span>
-      <strong>${result.funds.length} фондов</strong>
-    </div>
-    <div>
-      <span>На паузе</span>
-      <strong>${result.frozenCount}</strong>
-    </div>
+  `;
+
+  const fundCards = onboardingResult.activeFunds.map((fund) => renderOnboardingFundCard(fund, income, false)).join("");
+  const pausedCards = onboardingResult.pausedFunds.length
+    ? `<div class="onboarding-paused-title">Пауза</div>${onboardingResult.pausedFunds.map((fund) => renderOnboardingFundCard(fund, income, true)).join("")}`
+    : "";
+  els.onboardingPreviewList.innerHTML = fundCards + pausedCards;
+}
+
+function renderOnboardingFundCard(fund, income, paused) {
+  const amount = roundMoney(income * Number(fund.percent || 0) / 100);
+  return `
+    <article class="onboarding-fund-card ${paused ? "is-paused" : ""}" style="--fund-color: ${escapeHtml(fund.color)}">
+      <div class="onboarding-fund-strip"></div>
+      <div>
+        <span>${paused ? "Пауза" : escapeHtml(fund.category)}</span>
+        <strong>${escapeHtml(fund.name)}</strong>
+      </div>
+      <div class="onboarding-fund-numbers">
+        <b>${fund.percent}%</b>
+        <em>${money(amount)}</em>
+      </div>
+      <button class="ghost-btn compact" type="button" data-ob-edit-fund="${fund.id}">Изменить</button>
+    </article>
   `;
 }
 
-function applyBriefing() {
+function completeOnboarding(skipped = false, options = {}) {
   if (!canChangeData()) {
     return;
   }
 
-  const result = buildBriefingResult(collectBriefingData());
+  if (skipped) {
+    state.briefing = {
+      completedAt: new Date().toISOString(),
+      skipped: true
+    };
+    els.onboardingModal.close();
+    saveState();
+    render();
+    showToast("Онбординг пропущен. Можно настроить фонды вручную.");
+    return;
+  }
+
+  const result = onboardingResult || buildOnboardingResult();
   state.funds = result.funds;
   state.briefing = {
     completedAt: new Date().toISOString(),
+    skipped: false,
     mode: result.mode,
     requiredPercent: result.requiredPercent,
-    shares: result.shares,
-    frozenCount: result.frozenCount,
-    recommendations: result.recommendations,
     answers: result.data
   };
   state.history.push({
     id: createId(),
     date: new Date().toISOString(),
-    type: "Брифинг",
+    type: "Онбординг",
     amount: 0,
     periodKey: state.currentMonthKey,
     comment: `Созданы фонды по режиму «${result.mode}»`
   });
-  els.briefingModal.close();
-  showToast(`Брифинг готов: создано ${result.funds.length} фондов.`);
-  switchScreen("dashboard");
+  els.onboardingModal.close();
   render();
+  saveState();
+  showToast(`Создано фондов: ${result.funds.length}.`);
+
+  if (options.openFundId) {
+    window.setTimeout(() => {
+      openFundModal(state.funds.find((fund) => fund.id === options.openFundId));
+    }, 120);
+  }
 }
 
 function switchScreen(screen, options = {}) {
@@ -4035,7 +3723,6 @@ els.logoutBtn.addEventListener("click", async () => {
   clearSession();
   state = createDefaultState();
   isStorageReady = false;
-  hasAutoOfferedBriefing = false;
   storageStatus = "Войдите, чтобы загрузить данные из Supabase.";
   renderAuthState();
   render();
@@ -4135,17 +3822,13 @@ els.monthReportModal?.addEventListener("click", (event) => {
   }
 });
 
-els.briefingBackBtn.addEventListener("click", () => moveBriefingStep(-1));
+els.onboardingBackBtn?.addEventListener("click", () => moveOnboardingStep(-1));
 
-els.briefingNextBtn.addEventListener("click", () => moveBriefingStep(1));
+els.onboardingNextBtn?.addEventListener("click", () => moveOnboardingStep(1));
 
-els.addRequiredPaymentBtn.addEventListener("click", addRequiredPaymentRow);
+els.obAddDebtBtn?.addEventListener("click", () => addOnboardingDebtRow());
 
-els.addDebtBtn.addEventListener("click", addDebtRow);
-
-els.addComfortBtn.addEventListener("click", addComfortRow);
-
-els.addGoalBtn.addEventListener("click", addGoalRow);
+els.obAddComfortBtn?.addEventListener("click", () => addOnboardingComfortRow());
 
 els.showRequiredIncomeBtn.addEventListener("click", () => {
   isRequiredIncomeHidden = false;
@@ -4187,27 +3870,58 @@ document.querySelector(".dashboard-summary-row")?.addEventListener("click", (eve
   }
 });
 
-els.briefingForm.addEventListener("input", renderBriefingPreview);
-
-els.briefingForm.addEventListener("change", renderBriefingPreview);
-
-els.briefingForm.addEventListener("click", (event) => {
-  const removeButton = event.target.closest("[data-remove-briefing-item]");
-  if (!removeButton) {
-    return;
+els.onboardingForm?.addEventListener("input", () => {
+  if (onboardingStep === onboardingStepMeta.length - 1) {
+    renderOnboardingPreview();
   }
-
-  removeButton.closest("[data-briefing-item]")?.remove();
-  renderBriefingPreview();
 });
 
-els.briefingForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (event.submitter?.value === "cancel") {
-    els.briefingModal.close();
+els.onboardingForm?.addEventListener("change", () => {
+  if (onboardingStep === onboardingStepMeta.length - 1) {
+    renderOnboardingPreview();
+  }
+});
+
+els.onboardingForm?.addEventListener("click", (event) => {
+  const debtChoice = event.target.closest("[data-ob-debt-choice]")?.dataset.obDebtChoice;
+  if (debtChoice) {
+    setOnboardingDebtChoice(debtChoice);
+    if (debtChoice === "yes" && !els.obDebtList.children.length) {
+      addOnboardingDebtRow();
+    }
     return;
   }
-  applyBriefing();
+
+  const removeButton = event.target.closest("[data-ob-remove-row]");
+  if (removeButton) {
+    removeButton.closest("[data-ob-debt-row], [data-ob-comfort-row]")?.remove();
+    if (onboardingStep === onboardingStepMeta.length - 1) {
+      renderOnboardingPreview();
+    }
+    return;
+  }
+
+  const detailsButton = event.target.closest("[data-ob-toggle-details]");
+  if (detailsButton) {
+    const details = detailsButton.closest("[data-ob-debt-row]")?.querySelector("[data-ob-details]");
+    details?.classList.toggle("is-hidden");
+    detailsButton.textContent = details?.classList.contains("is-hidden") ? "Добавить детали" : "Скрыть детали";
+    return;
+  }
+
+  const editFundId = event.target.closest("[data-ob-edit-fund]")?.dataset.obEditFund;
+  if (editFundId) {
+    completeOnboarding(false, { openFundId: editFundId });
+  }
+});
+
+els.onboardingForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (event.submitter?.value === "apply") {
+    completeOnboarding(false);
+    return;
+  }
+  completeOnboarding(true);
 });
 
 els.resetMenuBtn.addEventListener("click", openResetMenu);
@@ -4356,7 +4070,6 @@ async function initApp() {
 }
 
 async function bootAuthenticatedApp(options = {}) {
-  hasAutoOfferedBriefing = false;
   state.profile = normalizeProfile(state.profile);
   renderAuthState();
   render();
@@ -4371,10 +4084,7 @@ async function bootAuthenticatedApp(options = {}) {
     renderAuthState();
     render();
     applyRoute();
-    if (shouldOfferQuickStart()) {
-      hasAutoOfferedBriefing = true;
-      window.setTimeout(() => openQuickStart(), 600);
-    }
+    maybeOfferOnboarding();
   } catch (error) {
     if (!session?.user?.id) {
       storageStatus = "Сессия устарела. Войдите заново.";
