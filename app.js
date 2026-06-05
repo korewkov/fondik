@@ -5,11 +5,6 @@ const SUPABASE_CONFIG = {
   table: "finance_user_state"
 };
 
-const LEGACY_STATE_CONFIG = {
-  table: "finance_app_state",
-  id: "personal-finance"
-};
-
 const SESSION_STORAGE_KEY = "fondik.supabase-session";
 const LEGACY_SESSION_STORAGE_KEY = "money-system.supabase-session";
 const SUPABASE_PROXY_PATH = "/api/supabase";
@@ -339,24 +334,18 @@ async function loadState(options = {}) {
     const rows = await supabaseRequest("GET", `/${SUPABASE_CONFIG.table}?user_id=eq.${encodeURIComponent(userId)}&select=data&limit=1`);
 
     if (!rows.length) {
-      const legacyState = await loadLegacyState();
-      const initialState = legacyState || createDefaultState();
+      const initialState = createDefaultState();
       await persistState(initialState);
-      storageStatus = legacyState
-        ? "Supabase подключен. Старые данные перенесены в ваш аккаунт."
-        : "Supabase подключен. Создана первая запись состояния.";
+      storageStatus = "Supabase подключен. Создана первая запись состояния.";
       isStorageReady = true;
       return initialState;
     }
 
     const savedState = normalizeState(rows[0].data);
     if (isOldExampleState(savedState)) {
-      const legacyState = await loadLegacyState();
-      const replacementState = legacyState || createDefaultState();
+      const replacementState = createDefaultState();
       await persistState(replacementState);
-      storageStatus = legacyState
-        ? "Supabase подключен. Старые данные перенесены в ваш аккаунт."
-        : "Supabase подключен. Примеры фондов обновлены.";
+      storageStatus = "Supabase подключен. Примеры фондов обновлены.";
       isStorageReady = true;
       return replacementState;
     }
@@ -370,10 +359,6 @@ async function loadState(options = {}) {
     showToast(storageStatus);
     return createDefaultState();
   }
-}
-
-async function loadLegacyState() {
-  return null;
 }
 
 function isOldExampleState(value) {
@@ -745,36 +730,6 @@ async function supabaseRequest(method, path, body, prefer = "return=representati
       headers: {
         apikey: SUPABASE_CONFIG.apiKey,
         Authorization: `Bearer ${session?.access_token || SUPABASE_CONFIG.apiKey}`,
-        "Content-Type": "application/json",
-        Prefer: prefer
-      },
-      body: body ? JSON.stringify(body) : undefined
-    });
-  } catch (error) {
-    throw new Error(formatNetworkError(error, "базой данных"));
-  }
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `HTTP ${response.status}`);
-  }
-
-  if (response.status === 204) {
-    return null;
-  }
-
-  const text = await response.text();
-  return parseJsonResponse(text);
-}
-
-async function supabaseAnonRequest(method, path, body, prefer = "return=representation") {
-  let response;
-  try {
-    response = await fetch(supabaseUrl("rest", path), {
-      method,
-      headers: {
-        apikey: SUPABASE_CONFIG.apiKey,
-        Authorization: `Bearer ${SUPABASE_CONFIG.apiKey}`,
         "Content-Type": "application/json",
         Prefer: prefer
       },
@@ -4412,15 +4367,10 @@ async function bootAuthenticatedApp(options = {}) {
     if (refreshedBeforeLoad) {
       await withTimeout(refreshSessionIfNeeded(), 8000, "Восстановление сессии");
     }
-state = await withTimeout(loadState({ skipRefresh: refreshedBeforeLoad || options.skipRefresh }), 12000, "Загрузка кабинета");
+    state = await withTimeout(loadState({ skipRefresh: refreshedBeforeLoad || options.skipRefresh }), 12000, "Загрузка кабинета");
     renderAuthState();
     render();
     applyRoute();
-     console.log("isStorageReady:", isStorageReady);
-    console.log("state.briefing:", state.briefing);
-    console.log("history length:", state.history.length);
-        console.log("history items:", JSON.stringify(state.history));
-    console.log("shouldOfferQuickStart:", shouldOfferQuickStart());
     if (shouldOfferQuickStart()) {
       hasAutoOfferedBriefing = true;
       window.setTimeout(() => openQuickStart(), 600);
