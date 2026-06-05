@@ -14,7 +14,7 @@
   <title>Фондик — личные фонды для дохода</title>
   <link rel="icon" type="image/svg+xml" href="assets/fondik-mark.svg">
   <link rel="apple-touch-icon" href="assets/fondik-apple-touch.png">
-  <link rel="stylesheet" href="style.css?v=20260604-7">
+  <link rel="stylesheet" href="style.css?v=20260604-8">
 </head>
 <body>
   <dialog class="auth-modal" id="authModal">
@@ -62,27 +62,68 @@
     </header>
 
     <main class="public-main" id="top">
-      <section class="public-hero">
-        <div class="hero-copy">
-          <p class="eyebrow">Личные фонды</p>
-          <img class="hero-wordmark" src="assets/fondik-wordmark-slogan.svg" alt="Фондик — деньги сразу попадают на свои места.">
-          <p>Создайте фонды для обязательных платежей, резерва, целей и личных трат. Укажите проценты один раз, а затем распределяйте каждое поступление без таблиц и ручной рутины.</p>
+      <section class="public-hero landing-hero">
+        <div class="hero-copy landing-hero-copy">
+          <p class="hero-badge">Личная система фондов</p>
+          <h1>Деньги больше не исчезают после зарплаты</h1>
+          <p>Фондик раскладывает каждый доход по фондам: обязательные платежи, долги, резерв, цели и личные траты. Вы сразу видите, куда отправить деньги и сколько можно тратить спокойно.</p>
           <div class="hero-actions">
-            <a class="primary-btn" href="/login" data-auth-trigger>Начать с аккаунтом</a>
+            <a class="primary-btn" href="/login" data-auth-trigger>Разложить первый доход</a>
             <a class="ghost-btn" href="/demo" data-public-route>Посмотреть демо</a>
           </div>
-        </div>
-        <div class="hero-preview" aria-label="Пример распределения дохода">
-          <div class="preview-top">
-            <span>Поступление</span>
-            <strong>75 000 ₽</strong>
+          <div class="hero-benefits" aria-label="Преимущества">
+            <span>Без таблиц</span>
+            <span>С учетом долгов</span>
+            <span>Правила для каждого поступления</span>
           </div>
-          <div class="preview-funds">
-            <div style="--preview-color: #3b82f6"><span>Обязательные платежи</span><strong>22 500 ₽</strong></div>
-            <div style="--preview-color: #14b8a6"><span>Резерв</span><strong>15 000 ₽</strong></div>
-            <div style="--preview-color: #f59e0b"><span>Крупные цели</span><strong>18 750 ₽</strong></div>
-            <div style="--preview-color: #22c55e"><span>Развитие</span><strong>11 250 ₽</strong></div>
-            <div style="--preview-color: #ec4899"><span>Личное</span><strong>7 500 ₽</strong></div>
+        </div>
+
+        <div class="landing-visual" aria-label="Пример распределения дохода">
+          <div class="money-orbit" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <i></i>
+            <i></i>
+          </div>
+          <img class="landing-mascot" src="assets/fondik-mark.svg" alt="">
+          <div class="income-card">
+            <span>Поступление</span>
+            <strong>+23 000 ₽</strong>
+          </div>
+          <div class="flow-lines" aria-hidden="true">
+            <span style="--line-top: 29%; --line-delay: 0.2s"></span>
+            <span style="--line-top: 41%; --line-delay: 0.45s"></span>
+            <span style="--line-top: 53%; --line-delay: 0.7s"></span>
+            <span style="--line-top: 65%; --line-delay: 0.95s"></span>
+            <span style="--line-top: 77%; --line-delay: 1.2s"></span>
+          </div>
+          <div class="fund-flow-list">
+            <article class="fund-flow-card" style="--fund-color: #3b82f6; --bar-width: 76%; --item-delay: 0.35s">
+              <span>Кредиты</span>
+              <strong>12 800 ₽</strong>
+              <i></i>
+            </article>
+            <article class="fund-flow-card" style="--fund-color: #22c55e; --bar-width: 54%; --item-delay: 0.5s">
+              <span>Жизнь и быт</span>
+              <strong>4 500 ₽</strong>
+              <i></i>
+            </article>
+            <article class="fund-flow-card" style="--fund-color: #14b8a6; --bar-width: 38%; --item-delay: 0.65s">
+              <span>Резерв</span>
+              <strong>1 200 ₽</strong>
+              <i></i>
+            </article>
+            <article class="fund-flow-card" style="--fund-color: #ec4899; --bar-width: 30%; --item-delay: 0.8s">
+              <span>Комфорт</span>
+              <strong>900 ₽</strong>
+              <i></i>
+            </article>
+            <article class="fund-flow-card" style="--fund-color: #f59e0b; --bar-width: 62%; --item-delay: 0.95s">
+              <span>Цели</span>
+              <strong>3 600 ₽</strong>
+              <i></i>
+            </article>
           </div>
         </div>
       </section>
